@@ -1,0 +1,891 @@
+// Estate Standard - Database Schema
+// Prisma schema for PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USERS & AUTHENTICATION
+// ============================================================================
+
+enum UserRole {
+  HOMEOWNER
+  VENDOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  phone         String?    @unique
+  passwordHash  String
+  role          UserRole
+  status        UserStatus @default(ACTIVE)
+  firstName     String
+  lastName      String
+  avatar        String?
+
+  // Timestamps
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  lastLoginAt   DateTime?
+
+  // Relationships
+  homeowner     Homeowner?
+  vendor        Vendor?
+
+  // Session & security
+  refreshTokens RefreshToken[]
+
+  @@index([email])
+  @@index([phone])
+  @@map("users")
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ============================================================================
+// HOMEOWNERS & HOMES
+// ============================================================================
+
+model Homeowner {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Subscription
+  subscriptionTier  String?   // 'monthly' | 'annual'
+  subscriptionStatus String?  // 'active' | 'canceled' | 'past_due'
+  stripeCustomerId  String?   @unique
+
+  // Preferences
+  preferredContactMethod String @default("in_app") // 'in_app' | 'sms' | 'email'
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  homes             Home[]
+  serviceRequests   ServiceRequest[]
+  appointments      Appointment[]
+  payments          Payment[]
+
+  @@map("homeowners")
+}
+
+model Home {
+  id            String   @id @default(cuid())
+  homeownerId   String
+  homeowner     Homeowner @relation(fields: [homeownerId], references: [id], onDelete: Cascade)
+
+  // Address
+  streetAddress String
+  unit          String?
+  city          String
+  state         String
+  zipCode       String
+  country       String   @default("USA")
+
+  // Property details
+  propertyType  String   // 'single_family' | 'condo' | 'townhouse' | 'estate'
+  squareFeet    Int?
+  bedrooms      Int?
+  bathrooms     Float?
+  yearBuilt     Int?
+
+  // Media
+  photos        String[] // S3 URLs
+
+  isPrimary     Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationships
+  maintenanceRecords    MaintenanceRecord[]
+  serviceRequests       ServiceRequest[]
+  appointments          Appointment[]
+  warrantyItems         WarrantyItem[]
+  emergencyContacts     EmergencyContact[]
+
+  @@index([homeownerId])
+  @@index([zipCode])
+  @@map("homes")
+}
+
+model EmergencyContact {
+  id        String   @id @default(cuid())
+  homeId    String
+  home      Home     @relation(fields: [homeId], references: [id], onDelete: Cascade)
+
+  name      String
+  phone     String
+  email     String?
+  relationship String // 'neighbor' | 'family' | 'property_manager' | 'other'
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([homeId])
+  @@map("emergency_contacts")
+}
+
+// ============================================================================
+// MAINTENANCE ENGINE (THE STANDARD)
+// ============================================================================
+
+enum MaintenanceCadence {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL // Every 6 months
+  YEARLY
+  AS_NEEDED
+}
+
+// Predefined maintenance categories
+model MaintenanceCategory {
+  id          String              @id @default(cuid())
+  name        String              @unique // "HVAC", "Plumbing", etc.
+  slug        String              @unique // "hvac", "plumbing"
+  description String?
+  icon        String?             // Icon identifier for UI
+
+  defaultCadence MaintenanceCadence
+
+  // Best practices guide
+  recommendedTasks String[] // ["Change filters", "Check refrigerant", etc.]
+  seasonalNotes    String?  // "Schedule before summer"
+
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relationships
+  maintenanceRecords MaintenanceRecord[]
+  serviceRequests    ServiceRequest[]
+  vendorServices     VendorService[]
+
+  @@map("maintenance_categories")
+}
+
+// Actual maintenance tracking per home
+model MaintenanceRecord {
+  id          String              @id @default(cuid())
+  homeId      String
+  home        Home                @relation(fields: [homeId], references: [id], onDelete: Cascade)
+
+  categoryId  String
+  category    MaintenanceCategory @relation(fields: [categoryId], references: [id])
+
+  // Scheduling
+  cadence     MaintenanceCadence
+  lastCompletedAt DateTime?
+  nextDueAt   DateTime?
+
+  // Completion details
+  completedBy String?  // Vendor name or "DIY"
+  vendorId    String?
+  notes       String?
+  photos      String[] // S3 URLs
+  cost        Float?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([homeId, categoryId])
+  @@index([nextDueAt])
+  @@map("maintenance_records")
+}
+
+// ============================================================================
+// SERVICE REQUESTS
+// ============================================================================
+
+enum RequestUrgency {
+  CRITICAL  // Gas leak, flooding, fire - immediate
+  HIGH      // Broken AC in summer, major leak - same day
+  NORMAL    // Standard maintenance - 1-3 days
+  LOW       // Cosmetic, planning - 1-2 weeks
+}
+
+enum RequestStatus {
+  DRAFT
+  SUBMITTED
+  TRIAGED
+  VENDOR_MATCHED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model ServiceRequest {
+  id              String              @id @default(cuid())
+
+  homeownerId     String
+  homeowner       Homeowner           @relation(fields: [homeownerId], references: [id])
+
+  homeId          String
+  home            Home                @relation(fields: [homeId], references: [id])
+
+  categoryId      String?
+  category        MaintenanceCategory? @relation(fields: [categoryId], references: [id])
+
+  // Request details
+  title           String
+  description     String
+  photos          String[] // S3 URLs
+  videos          String[] // S3 URLs
+
+  // AI Triage results
+  urgency         RequestUrgency      @default(NORMAL)
+  detectedCategory String?
+  replacementNeeded Boolean           @default(false) // Triggers warranty tracking
+  triageNotes     String?
+
+  status          RequestStatus       @default(SUBMITTED)
+
+  // Scheduling preferences
+  preferredDate   DateTime?
+  preferredTimeSlot String?          // "morning" | "afternoon" | "evening"
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relationships
+  appointments    Appointment[]
+  warrantyItem    WarrantyItem?
+  jobLedger       JobLedger?
+  messages        Message[]
+
+  @@index([homeownerId])
+  @@index([homeId])
+  @@index([status])
+  @@index([urgency])
+  @@map("service_requests")
+}
+
+// ============================================================================
+// VENDORS
+// ============================================================================
+
+enum VendorStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  SUSPENDED
+  REJECTED
+}
+
+model Vendor {
+  id              String        @id @default(cuid())
+  userId          String        @unique
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Business details
+  businessName    String
+  businessLicense String?
+  insuranceCert   String?       // S3 URL
+  ein             String?       // Tax ID
+
+  // Contact
+  businessPhone   String
+  businessEmail   String
+  website         String?
+
+  // Service area
+  serviceZipCodes String[]
+  serviceCities   String[]
+  serviceRadius   Int?          // Miles from base location
+
+  // Verification
+  status          VendorStatus  @default(PENDING_VERIFICATION)
+  verifiedAt      DateTime?
+  verificationNotes String?
+
+  // Rating & reviews
+  averageRating   Float         @default(0)
+  totalReviews    Int           @default(0)
+  totalJobs       Int           @default(0)
+
+  // Availability settings
+  autoAcceptBookings Boolean    @default(false)
+  bufferTime      Int           @default(30) // Minutes between appointments
+
+  // Payments
+  stripeAccountId String?       @unique
+  payoutMethod    String?       // 'bank' | 'debit_card'
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relationships
+  services        VendorService[]
+  availability    AvailabilitySlot[]
+  appointments    Appointment[]
+  sponsorships    Sponsorship[]
+  payouts         Payout[]
+  reviews         Review[]
+
+  @@index([status])
+  @@index([serviceZipCodes])
+  @@map("vendors")
+}
+
+// Services a vendor offers
+model VendorService {
+  id              String              @id @default(cuid())
+  vendorId        String
+  vendor          Vendor              @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  categoryId      String
+  category        MaintenanceCategory @relation(fields: [categoryId], references: [id])
+
+  // Pricing (optional, for transparency)
+  basePrice       Float?
+  hourlyRate      Float?
+  priceNote       String?            // "Starting at $X" or "Call for quote"
+
+  // Service specifics
+  supportsEmergency Boolean          @default(false)
+  supportsRecurring Boolean          @default(true)
+  estimatedDuration Int?             // Minutes
+
+  isActive        Boolean            @default(true)
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@unique([vendorId, categoryId])
+  @@index([categoryId])
+  @@map("vendor_services")
+}
+
+// Vendor availability for live scheduling
+model AvailabilitySlot {
+  id          String    @id @default(cuid())
+  vendorId    String
+  vendor      Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  // Slot definition
+  startTime   DateTime
+  endTime     DateTime
+
+  // Recurring availability (optional)
+  isRecurring Boolean   @default(false)
+  recurringRule String? // JSON: {"frequency": "weekly", "daysOfWeek": [1,3,5]}
+
+  // Booking status
+  isBooked    Boolean   @default(false)
+  bookedBy    String?   // Appointment ID
+
+  // Capacity (for team-based vendors)
+  capacity    Int       @default(1)
+  booked      Int       @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([vendorId, startTime])
+  @@index([isBooked, startTime])
+  @@map("availability_slots")
+}
+
+// ============================================================================
+// APPOINTMENTS & SCHEDULING
+// ============================================================================
+
+enum AppointmentStatus {
+  REQUESTED         // Homeowner requested
+  VENDOR_ACCEPTED   // Vendor confirmed
+  HOMEOWNER_CONFIRMED // Optional double confirmation
+  SCHEDULED         // Locked in
+  IN_PROGRESS       // Vendor checked in
+  COMPLETED_BY_VENDOR // Vendor marked complete
+  COMPLETED_CONFIRMED // Homeowner confirmed or auto-confirmed
+  DISPUTED          // Issue raised
+  CANCELLED         // Cancelled by either party
+}
+
+model Appointment {
+  id                  String            @id @default(cuid())
+
+  homeownerId         String
+  homeowner           Homeowner         @relation(fields: [homeownerId], references: [id])
+
+  homeId              String
+  home                Home              @relation(fields: [homeId], references: [id])
+
+  vendorId            String
+  vendor              Vendor            @relation(fields: [vendorId], references: [id])
+
+  serviceRequestId    String?
+  serviceRequest      ServiceRequest?   @relation(fields: [serviceRequestId], references: [id])
+
+  recurringRuleId     String?
+  recurringRule       RecurringRule?    @relation(fields: [recurringRuleId], references: [id])
+
+  // Appointment details
+  scheduledStart      DateTime
+  scheduledEnd        DateTime
+  actualStart         DateTime?
+  actualEnd           DateTime?
+
+  status              AppointmentStatus @default(REQUESTED)
+
+  // Confirmation tracking
+  vendorAcceptedAt    DateTime?
+  homeownerConfirmedAt DateTime?
+
+  // Completion proof
+  completionPhotos    String[]         // Before/after photos
+  completionNotes     String?
+  invoiceUrl          String?          // Uploaded invoice
+  checkInTimestamp    DateTime?
+  checkOutTimestamp   DateTime?
+
+  // Homeowner confirmation
+  homeownerConfirmedCompletionAt DateTime?
+  autoConfirmedAt     DateTime?        // If no response after 48 hours
+
+  // Dispute
+  disputeReason       String?
+  disputedAt          DateTime?
+  disputeResolvedAt   DateTime?
+
+  // Cancellation
+  cancelledBy         String?          // 'homeowner' | 'vendor' | 'admin'
+  cancelledAt         DateTime?
+  cancellationReason  String?
+
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  // Relationships
+  jobLedger           JobLedger?
+  review              Review?
+
+  @@index([homeownerId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([scheduledStart])
+  @@map("appointments")
+}
+
+// ============================================================================
+// RECURRING VISITS
+// ============================================================================
+
+enum RecurringFrequency {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL // Every 6 months
+  YEARLY
+}
+
+model RecurringRule {
+  id              String              @id @default(cuid())
+
+  homeownerId     String
+  vendorId        String
+  homeId          String
+  categoryId      String
+
+  frequency       RecurringFrequency
+
+  // Scheduling preferences
+  preferredDayOfWeek Int?            // 0-6 (Sunday-Saturday)
+  preferredTimeSlot  String?         // "morning" | "afternoon"
+
+  // Active status
+  isActive        Boolean            @default(true)
+
+  // Next generation
+  nextScheduledDate DateTime?
+  lastGeneratedDate DateTime?
+
+  // Auto-booking
+  autoBook        Boolean            @default(true) // Auto-create appointments
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  endedAt         DateTime?
+
+  // Relationships
+  appointments    Appointment[]
+
+  @@index([isActive, nextScheduledDate])
+  @@map("recurring_rules")
+}
+
+// ============================================================================
+// JOB LEDGER (SINGLE SOURCE OF TRUTH)
+// ============================================================================
+
+enum JobStatus {
+  REQUEST_CREATED
+  SENT_TO_VENDOR
+  VENDOR_ACCEPTED
+  HOMEOWNER_CONFIRMED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED_BY_VENDOR
+  COMPLETED_CONFIRMED
+  DISPUTED
+  CANCELLED
+  PAID_OUT
+}
+
+model JobLedger {
+  id                  String         @id @default(cuid())
+
+  // Core references
+  serviceRequestId    String?        @unique
+  serviceRequest      ServiceRequest? @relation(fields: [serviceRequestId], references: [id])
+
+  appointmentId       String?        @unique
+  appointment         Appointment?   @relation(fields: [appointmentId], references: [id])
+
+  homeownerId         String
+  vendorId            String?
+  categoryName        String
+
+  // Status tracking
+  status              JobStatus      @default(REQUEST_CREATED)
+
+  // Timestamps
+  requestCreatedAt    DateTime       @default(now())
+  sentToVendorAt      DateTime?
+  vendorAcceptedAt    DateTime?
+  homeownerConfirmedAt DateTime?
+  scheduledAt         DateTime?
+  startedAt           DateTime?
+  completedByVendorAt DateTime?
+  completedConfirmedAt DateTime?
+  disputedAt          DateTime?
+  cancelledAt         DateTime?
+  paidOutAt           DateTime?
+
+  // Completion proof flags
+  hasBeforeAfterPhotos Boolean       @default(false)
+  hasTimestamps        Boolean       @default(false)
+  hasInvoice           Boolean       @default(false)
+  hasHomeownerConfirmation Boolean   @default(false)
+
+  // Financial
+  agreedPrice         Float?
+  actualPrice         Float?
+  platformFee         Float?         // Calculated when job completed
+  vendorPayout        Float?         // actualPrice - platformFee
+
+  // Payment status
+  homeownerPaid       Boolean        @default(false)
+  vendorPaidOut       Boolean        @default(false)
+
+  // Dispute
+  disputeReason       String?
+  disputeResolution   String?
+
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@index([status])
+  @@index([homeownerId])
+  @@index([vendorId])
+  @@map("job_ledger")
+}
+
+// ============================================================================
+// PAYMENTS & PAYOUTS
+// ============================================================================
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+
+  homeownerId       String
+  homeowner         Homeowner     @relation(fields: [homeownerId], references: [id])
+
+  appointmentId     String?
+
+  // Stripe
+  stripePaymentIntentId String?   @unique
+  stripeChargeId    String?
+
+  amount            Float
+  currency          String        @default("usd")
+
+  status            PaymentStatus @default(PENDING)
+
+  // Metadata
+  description       String?
+  metadata          Json?
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([homeownerId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Payout {
+  id                String        @id @default(cuid())
+
+  vendorId          String
+  vendor            Vendor        @relation(fields: [vendorId], references: [id])
+
+  appointmentId     String?
+
+  // Stripe Connect
+  stripeTransferId  String?       @unique
+
+  amount            Float
+  platformFee       Float
+  vendorAmount      Float         // amount - platformFee
+  currency          String        @default("usd")
+
+  status            PaymentStatus @default(PENDING)
+
+  // Metadata
+  description       String?
+  metadata          Json?
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  paidAt            DateTime?
+
+  @@index([vendorId])
+  @@index([status])
+  @@map("payouts")
+}
+
+// ============================================================================
+// WARRANTY TRACKING (QUIET, TRIGGERED ONLY WHEN NEEDED)
+// ============================================================================
+
+model WarrantyItem {
+  id                String         @id @default(cuid())
+
+  homeId            String
+  home              Home           @relation(fields: [homeId], references: [id], onDelete: Cascade)
+
+  serviceRequestId  String?        @unique
+  serviceRequest    ServiceRequest? @relation(fields: [serviceRequestId], references: [id])
+
+  // Item details
+  itemName          String         // "HVAC Unit", "Water Heater", etc.
+  category          String
+  manufacturer      String?
+  modelNumber       String?
+  serialNumber      String?
+
+  // Purchase & warranty
+  purchaseDate      DateTime?
+  purchasePrice     Float?
+  warrantyYears     Int?
+  warrantyEndDate   DateTime?
+
+  // Documentation
+  receipt           String?        // S3 URL
+  warrantyDocument  String?        // S3 URL
+  photos            String[]
+
+  // Status
+  isActive          Boolean        @default(true)
+  notes             String?
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([homeId])
+  @@index([warrantyEndDate])
+  @@map("warranty_items")
+}
+
+// ============================================================================
+// REVIEWS & RATINGS
+// ============================================================================
+
+model Review {
+  id            String      @id @default(cuid())
+
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  vendorId      String
+  vendor        Vendor      @relation(fields: [vendorId], references: [id])
+
+  // Rating (1-5 stars)
+  rating        Int
+
+  // Review content
+  title         String?
+  comment       String?
+
+  // Specific ratings
+  professionalismRating Int?
+  qualityRating         Int?
+  communicationRating   Int?
+  valueRating           Int?
+
+  // Vendor response
+  vendorResponse String?
+  vendorRespondedAt DateTime?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([vendorId])
+  @@index([rating])
+  @@map("reviews")
+}
+
+// ============================================================================
+// MESSAGING & COMMUNICATION
+// ============================================================================
+
+enum MessageChannel {
+  IN_APP
+  SMS
+  EMAIL
+}
+
+enum MessageDirection {
+  HOMEOWNER_TO_VENDOR
+  VENDOR_TO_HOMEOWNER
+  HOMEOWNER_TO_SUPPORT
+  SUPPORT_TO_HOMEOWNER
+  SYSTEM
+}
+
+model Message {
+  id                String           @id @default(cuid())
+
+  serviceRequestId  String?
+  serviceRequest    ServiceRequest?  @relation(fields: [serviceRequestId], references: [id])
+
+  // Participants
+  senderId          String?          // User ID
+  recipientId       String?          // User ID
+
+  direction         MessageDirection
+  channel           MessageChannel   @default(IN_APP)
+
+  // Content
+  subject           String?
+  body              String
+  attachments       String[]         // S3 URLs
+
+  // AI processing
+  aiProcessed       Boolean          @default(false)
+  aiSuggestion      String?          // AI-generated response suggestion
+  sentimentScore    Float?           // -1 to 1
+  urgencyDetected   Boolean          @default(false)
+
+  // Status
+  isRead            Boolean          @default(false)
+  readAt            DateTime?
+
+  createdAt         DateTime         @default(now())
+
+  @@index([serviceRequestId])
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+// ============================================================================
+// SPONSORSHIPS & ADS
+// ============================================================================
+
+enum SponsorshipTier {
+  FEATURED    // $1000/mo - Top placement
+  PREMIUM     // $750/mo - Priority placement
+  BASIC       // $500/mo - Standard placement
+}
+
+model Sponsorship {
+  id            String          @id @default(cuid())
+
+  vendorId      String
+  vendor        Vendor          @relation(fields: [vendorId], references: [id])
+
+  tier          SponsorshipTier
+
+  // Targeting
+  zipCodes      String[]        // Geographic targeting
+  categories    String[]        // Category targeting
+
+  // Billing
+  monthlyRate   Float
+  startDate     DateTime
+  endDate       DateTime?
+
+  isActive      Boolean         @default(true)
+
+  // Performance
+  impressions   Int             @default(0)
+  clicks        Int             @default(0)
+  bookings      Int             @default(0)
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([vendorId])
+  @@index([isActive, startDate, endDate])
+  @@map("sponsorships")
+}
+
+// ============================================================================
+// SYSTEM & ADMIN
+// ============================================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+
+  userId      String?
+  action      String   // 'user.login', 'appointment.create', etc.
+  entity      String?  // 'User', 'Appointment', etc.
+  entityId    String?
+
+  changes     Json?    // Before/after snapshot
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
