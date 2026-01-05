@@ -37,6 +37,29 @@ model User {
   lastName      String
   avatar        String?
 
+  // Email verification
+  emailVerified         Boolean   @default(false)
+  emailVerifyToken      String?   @unique
+  emailVerifyExpires    DateTime?
+
+  // Password reset
+  passwordResetToken    String?   @unique
+  passwordResetExpires  DateTime?
+  passwordResetAttempts Int       @default(0)
+
+  // Password history (prevent reuse)
+  passwordHistory       String[]  @default([])
+
+  // Two-factor authentication
+  twoFactorSecret       String?
+  twoFactorEnabled      Boolean   @default(false)
+  twoFactorBackupCodes  String[]  @default([])
+
+  // Account security
+  failedLoginAttempts   Int       @default(0)
+  accountLockedUntil    DateTime?
+  lastPasswordChange    DateTime  @default(now())
+
   // Timestamps
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
@@ -51,6 +74,8 @@ model User {
 
   @@index([email])
   @@index([phone])
+  @@index([emailVerifyToken])
+  @@index([passwordResetToken])
   @@map("users")
 }
 
