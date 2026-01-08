@@ -105,7 +105,7 @@ Search maintenance categories...
 ```
 ═══════════════════════════════════════
   Customer Care
-  We gotta guy
+  We know someone who can help
 ═══════════════════════════════════════
 
 💬 What can we help with?
@@ -528,7 +528,7 @@ AuditLog
 - Premium feel without being sterile
 
 **Microcopy:**
-- "We gotta guy" (not "Task submitted")
+- "We know someone who can help" (not "Task submitted")
 - "All systems running smoothly" (not "No issues")
 - "Your Home Health" (not "Status")
 - Calm, reassuring tone throughout
