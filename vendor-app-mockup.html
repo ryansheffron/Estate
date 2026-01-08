@@ -284,15 +284,15 @@
 
         .job-actions {
             display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 12px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
         }
 
         .btn {
-            padding: 12px;
+            padding: 12px 8px;
             border-radius: 12px;
             border: none;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
@@ -306,6 +306,15 @@
 
         .btn-decline:hover {
             background: #E8E6E3;
+        }
+
+        .btn-alternate {
+            background: #D4A574;
+            color: white;
+        }
+
+        .btn-alternate:hover {
+            background: #C9A88A;
         }
 
         .btn-accept {
@@ -721,7 +730,8 @@
                                     </div>
                                     <div class="job-actions">
                                         <button class="btn btn-decline">Decline</button>
-                                        <button class="btn btn-accept">Accept Job</button>
+                                        <button class="btn btn-alternate">Propose Time</button>
+                                        <button class="btn btn-accept">Accept</button>
                                     </div>
                                 </div>
 
@@ -738,7 +748,8 @@
                                     </div>
                                     <div class="job-actions">
                                         <button class="btn btn-decline">Decline</button>
-                                        <button class="btn btn-accept">Accept Job</button>
+                                        <button class="btn btn-alternate">Propose Time</button>
+                                        <button class="btn btn-accept">Accept</button>
                                     </div>
                                 </div>
                             </div>
@@ -967,9 +978,9 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
                 <div>
                     <div style="font-size: 32px; margin-bottom: 12px;">✅</div>
-                    <h3 style="font-size: 18px; color: #2C2C2C; margin-bottom: 8px; font-weight: 600;">Accept/Decline Jobs</h3>
+                    <h3 style="font-size: 18px; color: #2C2C2C; margin-bottom: 8px; font-weight: 600;">Accept/Decline/Propose Time</h3>
                     <p style="font-size: 14px; color: #5A5A5A; line-height: 1.6;">
-                        Review job details, urgency, and customer info. Accept or decline with one tap. Jobs auto-expire after 15 minutes.
+                        Review job details, urgency, and customer info. Accept, decline, or propose an alternate time slot. Jobs auto-expire after 15 minutes.
                     </p>
                 </div>
 

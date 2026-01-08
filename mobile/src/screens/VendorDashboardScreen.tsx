@@ -84,7 +84,7 @@ export default function VendorDashboardScreen() {
           <View style={styles.jobDetails}>
             <View style={styles.jobDetail}>
               <Ionicons name="calendar-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.jobDetailText}>Today, 2:00 PM - 4:00 PM</Text>
+              <Text style={styles.jobDetailText}>Today, 12-5 PM</Text>
             </View>
             <View style={styles.jobDetail}>
               <Ionicons name="cash-outline" size={16} color={theme.colors.textSecondary} />
@@ -96,8 +96,11 @@ export default function VendorDashboardScreen() {
             <TouchableOpacity style={styles.declineButton}>
               <Text style={styles.declineButtonText}>Decline</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.alternateButton}>
+              <Text style={styles.alternateButtonText}>Propose Time</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.acceptButton}>
-              <Text style={styles.acceptButtonText}>Accept Job</Text>
+              <Text style={styles.acceptButtonText}>Accept</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -117,7 +120,7 @@ export default function VendorDashboardScreen() {
           <View style={styles.jobDetails}>
             <View style={styles.jobDetail}>
               <Ionicons name="calendar-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.jobDetailText}>Tomorrow, 10:00 AM - 12:00 PM</Text>
+              <Text style={styles.jobDetailText}>Tomorrow, 8-12 AM</Text>
             </View>
             <View style={styles.jobDetail}>
               <Ionicons name="cash-outline" size={16} color={theme.colors.textSecondary} />
@@ -129,8 +132,11 @@ export default function VendorDashboardScreen() {
             <TouchableOpacity style={styles.declineButton}>
               <Text style={styles.declineButtonText}>Decline</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.alternateButton}>
+              <Text style={styles.alternateButtonText}>Propose Time</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.acceptButton}>
-              <Text style={styles.acceptButtonText}>Accept Job</Text>
+              <Text style={styles.acceptButtonText}>Accept</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -154,7 +160,7 @@ export default function VendorDashboardScreen() {
           <View style={styles.jobDetails}>
             <View style={styles.jobDetail}>
               <Ionicons name="time-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.jobDetailText}>2:00 PM - 4:00 PM (30 min away)</Text>
+              <Text style={styles.jobDetailText}>12-5 PM (30 min away)</Text>
             </View>
             <View style={styles.jobDetail}>
               <Ionicons name="navigate-outline" size={16} color={theme.colors.textSecondary} />
@@ -379,30 +385,42 @@ const styles = StyleSheet.create({
   },
   jobActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   declineButton: {
     flex: 1,
     backgroundColor: theme.colors.background,
     borderRadius: 12,
-    padding: 14,
+    padding: 12,
     alignItems: 'center',
   },
   declineButtonText: {
     color: theme.colors.textPrimary,
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  alternateButton: {
+    flex: 1,
+    backgroundColor: theme.colors.warmClay,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+  },
+  alternateButtonText: {
+    color: 'white',
+    fontSize: 14,
     fontWeight: '600',
   },
   acceptButton: {
-    flex: 2,
+    flex: 1,
     backgroundColor: theme.colors.success,
     borderRadius: 12,
-    padding: 14,
+    padding: 12,
     alignItems: 'center',
   },
   acceptButtonText: {
     color: 'white',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   statusBadge: {
