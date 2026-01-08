@@ -39,11 +39,11 @@ export default function VendorActiveJobScreen() {
         <View style={styles.infoRow}>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Scheduled</Text>
-            <Text style={styles.infoValue}>2:00 PM - 4:00 PM</Text>
+            <Text style={styles.infoValue}>12:00 PM - 5:00 PM</Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Check-in</Text>
-            <Text style={styles.infoValue}>2:05 PM</Text>
+            <Text style={styles.infoValue}>12:15 PM</Text>
           </View>
         </View>
 

@@ -87,7 +87,7 @@ export default function CustomerCareScreen() {
                   />
                   <Text style={styles.vendorName}>Cool Breeze HVAC</Text>
                 </View>
-                <Text style={styles.appointmentTime}>Jan 10, 2PM</Text>
+                <Text style={styles.appointmentTime}>Jan 10, 12-5 PM</Text>
               </View>
             </View>
 
@@ -122,7 +122,7 @@ export default function CustomerCareScreen() {
                     size={14}
                     color={theme.colors.textSecondary}
                   />
-                  <Text style={styles.appointmentTimeText}>8:00 AM - 10:00 AM</Text>
+                  <Text style={styles.appointmentTimeText}>8-12 AM</Text>
                 </View>
               </View>
               <View style={styles.appointmentActions}>

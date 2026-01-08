@@ -186,7 +186,7 @@ export default function VendorDashboardScreen() {
           <View style={styles.jobDetails}>
             <View style={styles.jobDetail}>
               <Ionicons name="time-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.jobDetailText}>4:00 PM - 6:00 PM</Text>
+              <Text style={styles.jobDetailText}>12-5 PM</Text>
             </View>
           </View>
 

@@ -121,11 +121,11 @@ ACTIVE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   🔥 HVAC not cooling properly
   Status: Vendor en route
-  Cool Breeze HVAC • Arriving: 2:00 PM
+  Cool Breeze HVAC • Arriving: 12-5 PM window
 
   💧 Gutter cleaning needed
   Status: Scheduled
-  Green Horizon • Jan 18, 10:00 AM
+  Green Horizon • Jan 18, 8-12 AM
 
 COMPLETED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -183,11 +183,10 @@ Status: VENDOR_MATCHED
 #### 3. **Live Scheduling**
 ```
 Available Slots:
-• Today, Jan 5: 2:00 PM - 4:00 PM
-• Today, Jan 5: 4:00 PM - 6:00 PM
-• Tomorrow, Jan 6: 10:00 AM - 12:00 PM
+• Today, Jan 5: 8-12 AM
+• Today, Jan 5: 12-5 PM
 
-User books: Today, 2:00 PM
+User books: Today, 12-5 PM
 
 Vendor auto-accepts (or confirms within 15 min)
 Status: SCHEDULED
@@ -195,13 +194,13 @@ Status: SCHEDULED
 
 #### 4. **Service Day**
 ```
-Vendor checks in: 2:05 PM
+Vendor checks in: 12:15 PM
 Status: IN_PROGRESS
 
 Homeowner receives notification:
 "John from Cool Breeze HVAC has arrived"
 
-Work completed: 3:45 PM
+Work completed: 2:30 PM
 Vendor uploads:
 • Before/after photos
 • Invoice: $285.00
