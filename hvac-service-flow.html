@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estate Standard - HVAC Service Flow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #E8E6E3 0%, #D4D2CF 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2C2C2C;
+        }
+
+        .header h1 {
+            font-size: 42px;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 18px;
+            color: #5A5A5A;
+            font-weight: 300;
+        }
+
+        .flow-container {
+            display: flex;
+            gap: 30px;
+            overflow-x: auto;
+            padding-bottom: 20px;
+            scroll-snap-type: x mandatory;
+        }
+
+        .flow-step {
+            min-width: 380px;
+            scroll-snap-align: start;
+        }
+
+        .phone {
+            background: #2C2C2C;
+            border-radius: 40px;
+            padding: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .phone-screen {
+            background: #F5F3F0;
+            border-radius: 32px;
+            overflow: hidden;
+            height: 720px;
+            overflow-y: auto;
+        }
+
+        .phone-screen::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .phone-screen::-webkit-scrollbar-track {
+            background: #E8E6E3;
+            border-radius: 3px;
+        }
+
+        .phone-screen::-webkit-scrollbar-thumb {
+            background: #9BAA8E;
+            border-radius: 3px;
+        }
+
+        .step-label {
+            text-align: center;
+            background: #FFFFFF;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 36px;
+            height: 36px;
+            background: #9BAA8E;
+            color: white;
+            border-radius: 50%;
+            line-height: 36px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .step-title {
+            font-size: 18px;
+            color: #2C2C2C;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .step-desc {
+            font-size: 14px;
+            color: #5A5A5A;
+            line-height: 1.5;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: #F5F3F0;
+            padding: 12px 24px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #2C2C2C;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            padding: 24px;
+        }
+
+        /* Header */
+        .screen-header {
+            margin-bottom: 24px;
+        }
+
+        .screen-title {
+            font-size: 28px;
+            color: #2C2C2C;
+            font-weight: 400;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+
+        .screen-subtitle {
+            font-size: 14px;
+            color: #8A8A8A;
+            font-weight: 400;
+        }
+
+        /* Input */
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            font-size: 14px;
+            color: #5A5A5A;
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 500;
+        }
+
+        textarea {
+            width: 100%;
+            background: #FFFFFF;
+            border: 1px solid #E8E6E3;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 15px;
+            color: #2C2C2C;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        textarea.filled {
+            background: #FFFFFF;
+            border-color: #9BAA8E;
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 12px;
+            color: #B5B5B5;
+            margin-top: 4px;
+        }
+
+        /* Button */
+        .btn {
+            width: 100%;
+            background: #4A5F7A;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #3A4F6A;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(74, 95, 122, 0.3);
+        }
+
+        .btn-secondary {
+            background: #FFFFFF;
+            color: #4A5F7A;
+            border: 2px solid #4A5F7A;
+        }
+
+        .btn-secondary:hover {
+            background: #F5F3F0;
+        }
+
+        /* Alert Card */
+        .alert-card {
+            background: linear-gradient(135deg, #7FA07F 0%, #8B9A7E 100%);
+            border-radius: 16px;
+            padding: 20px;
+            color: white;
+            margin-bottom: 24px;
+        }
+
+        .alert-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .alert-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .alert-text {
+            font-size: 14px;
+            line-height: 1.6;
+            opacity: 0.95;
+        }
+
+        .alert-warning {
+            background: linear-gradient(135deg, #D4A574 0%, #C9A88A 100%);
+        }
+
+        /* Triage Info */
+        .triage-info {
+            background: #FFFFFF;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .triage-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #F5F3F0;
+        }
+
+        .triage-row:last-child {
+            border-bottom: none;
+        }
+
+        .triage-label {
+            font-size: 14px;
+            color: #5A5A5A;
+        }
+
+        .triage-value {
+            font-size: 14px;
+            color: #2C2C2C;
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-high {
+            background: #D4A574;
+            color: white;
+        }
+
+        .badge-critical {
+            background: #B87A7A;
+            color: white;
+        }
+
+        /* Vendor Card */
+        .vendor-card {
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .vendor-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            border-color: #9BAA8E;
+        }
+
+        .vendor-card.selected {
+            border-color: #9BAA8E;
+            background: #F5F3F0;
+        }
+
+        .vendor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .vendor-name {
+            font-size: 18px;
+            color: #2C2C2C;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .vendor-rating {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            color: #5A5A5A;
+        }
+
+        .star {
+            color: #D4A574;
+        }
+
+        .sponsored-badge {
+            background: #4A5F7A;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .vendor-details {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #8A8A8A;
+        }
+
+        .vendor-detail {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .vendor-description {
+            font-size: 14px;
+            color: #5A5A5A;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .vendor-price {
+            font-size: 16px;
+            color: #2C2C2C;
+            font-weight: 600;
+        }
+
+        /* Section */
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            color: #2C2C2C;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        /* Time Slot Grid */
+        .time-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .time-slot {
+            background: #FFFFFF;
+            border: 2px solid #E8E6E3;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .time-slot:hover {
+            border-color: #9BAA8E;
+            background: #F5F3F0;
+        }
+
+        .time-slot.selected {
+            border-color: #9BAA8E;
+            background: #9BAA8E;
+            color: white;
+        }
+
+        .time-slot.unavailable {
+            background: #F5F3F0;
+            border-color: #E8E6E3;
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .time-slot-time {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .time-slot-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* Date Selector */
+        .date-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .date-option {
+            flex-shrink: 0;
+            background: #FFFFFF;
+            border: 2px solid #E8E6E3;
+            border-radius: 12px;
+            padding: 12px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 80px;
+        }
+
+        .date-option:hover {
+            border-color: #9BAA8E;
+        }
+
+        .date-option.selected {
+            border-color: #9BAA8E;
+            background: #9BAA8E;
+            color: white;
+        }
+
+        .date-day {
+            font-size: 12px;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .date-date {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* Confirmation Card */
+        .confirm-card {
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+
+        .confirm-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #F5F3F0;
+        }
+
+        .confirm-row:last-child {
+            border-bottom: none;
+        }
+
+        .confirm-label {
+            font-size: 14px;
+            color: #5A5A5A;
+        }
+
+        .confirm-value {
+            font-size: 14px;
+            color: #2C2C2C;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .success-icon {
+            text-align: center;
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .success-title {
+            text-align: center;
+            font-size: 24px;
+            color: #2C2C2C;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .success-text {
+            text-align: center;
+            font-size: 14px;
+            color: #5A5A5A;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        /* Arrow */
+        .arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #9BAA8E;
+            min-width: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .flow-container {
+                flex-direction: column;
+            }
+
+            .arrow {
+                transform: rotate(90deg);
+                margin: 20px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>HVAC Service Request Flow</h1>
+            <p>From problem description to confirmed appointment</p>
+        </div>
+
+        <div class="flow-container">
+            <!-- Step 1: Describe Issue -->
+            <div class="flow-step">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div class="screen-header">
+                                <div class="screen-title">Describe Your Issue</div>
+                                <div class="screen-subtitle">We'll take care of this</div>
+                            </div>
+
+                            <div class="input-group">
+                                <label class="input-label">💬 What's happening?</label>
+                                <textarea class="filled" readonly>My HVAC system is making a loud grinding noise and it's not cooling the house below 75°F. It's 95°F outside and we have young kids. Please help!</textarea>
+                                <div class="char-count">142 characters</div>
+                            </div>
+
+                            <div class="section">
+                                <label class="input-label">📷 Photos (optional)</label>
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                                    <div style="background: #E8E6E3; border-radius: 8px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 24px;">🌡️</div>
+                                    <div style="background: #E8E6E3; border-radius: 8px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 24px;">📸</div>
+                                    <div style="background: #F5F3F0; border: 2px dashed #D4D2CF; border-radius: 8px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #B5B5B5;">+</div>
+                                </div>
+                            </div>
+
+                            <button class="btn">Submit Request</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-label">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Describe Issue</div>
+                    <div class="step-desc">Homeowner describes HVAC problem with natural language and optional photos</div>
+                </div>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <!-- Step 2: AI Triage -->
+            <div class="flow-step">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div class="screen-header">
+                                <div class="screen-title">Request Analyzed</div>
+                                <div class="screen-subtitle">AI triage complete</div>
+                            </div>
+
+                            <div class="alert-card alert-warning">
+                                <div class="alert-icon">⚡</div>
+                                <div class="alert-title">High Priority</div>
+                                <div class="alert-text">
+                                    Same-day service recommended. We'll match you with verified HVAC specialists in your area.
+                                </div>
+                            </div>
+
+                            <div class="triage-info">
+                                <div class="triage-row">
+                                    <div class="triage-label">Category</div>
+                                    <div class="triage-value">HVAC System</div>
+                                </div>
+                                <div class="triage-row">
+                                    <div class="triage-label">Urgency</div>
+                                    <div class="triage-value">
+                                        <span class="badge badge-high">HIGH</span>
+                                    </div>
+                                </div>
+                                <div class="triage-row">
+                                    <div class="triage-label">Issue Type</div>
+                                    <div class="triage-value">Repair Needed</div>
+                                </div>
+                                <div class="triage-row">
+                                    <div class="triage-label">Replacement Likely</div>
+                                    <div class="triage-value">No</div>
+                                </div>
+                                <div class="triage-row">
+                                    <div class="triage-label">Est. Duration</div>
+                                    <div class="triage-value">1-2 hours</div>
+                                </div>
+                                <div class="triage-row">
+                                    <div class="triage-label">Est. Cost Range</div>
+                                    <div class="triage-value">$200-$400</div>
+                                </div>
+                            </div>
+
+                            <button class="btn">View Recommended Vendors</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-label">
+                    <div class="step-number">2</div>
+                    <div class="step-title">AI Triage</div>
+                    <div class="step-desc">System analyzes urgency, detects category, estimates cost, and suggests response</div>
+                </div>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <!-- Step 3: 3 Vendor Recommendations -->
+            <div class="flow-step">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div class="screen-header">
+                                <div class="screen-title">Recommended Vendors</div>
+                                <div class="screen-subtitle">3 verified HVAC specialists</div>
+                            </div>
+
+                            <!-- Vendor 1 - Sponsored -->
+                            <div class="vendor-card selected">
+                                <div class="vendor-header">
+                                    <div>
+                                        <div class="vendor-name">Cool Breeze HVAC</div>
+                                        <div class="vendor-rating">
+                                            <span class="star">★★★★★</span>
+                                            <span>4.9 (127 reviews)</span>
+                                        </div>
+                                    </div>
+                                    <div class="sponsored-badge">SPONSORED</div>
+                                </div>
+                                <div class="vendor-details">
+                                    <div class="vendor-detail">📍 2.3 mi</div>
+                                    <div class="vendor-detail">✓ Licensed</div>
+                                    <div class="vendor-detail">🛡️ Insured</div>
+                                </div>
+                                <div class="vendor-description">
+                                    Specializing in residential HVAC repair and maintenance. Same-day emergency service available. 15+ years experience.
+                                </div>
+                                <div class="vendor-price">$85/hr · Available today</div>
+                            </div>
+
+                            <!-- Vendor 2 - Organic -->
+                            <div class="vendor-card">
+                                <div class="vendor-header">
+                                    <div>
+                                        <div class="vendor-name">DFW Climate Control</div>
+                                        <div class="vendor-rating">
+                                            <span class="star">★★★★★</span>
+                                            <span>4.8 (89 reviews)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="vendor-details">
+                                    <div class="vendor-detail">📍 3.1 mi</div>
+                                    <div class="vendor-detail">✓ Licensed</div>
+                                    <div class="vendor-detail">🛡️ Insured</div>
+                                </div>
+                                <div class="vendor-description">
+                                    Family-owned HVAC company serving DFW since 2008. Expert diagnostics and repair.
+                                </div>
+                                <div class="vendor-price">$95/hr · Available tomorrow</div>
+                            </div>
+
+                            <!-- Vendor 3 - Organic -->
+                            <div class="vendor-card">
+                                <div class="vendor-header">
+                                    <div>
+                                        <div class="vendor-name">Texas Temp Solutions</div>
+                                        <div class="vendor-rating">
+                                            <span class="star">★★★★☆</span>
+                                            <span>4.7 (64 reviews)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="vendor-details">
+                                    <div class="vendor-detail">📍 4.5 mi</div>
+                                    <div class="vendor-detail">✓ Licensed</div>
+                                    <div class="vendor-detail">🛡️ Insured</div>
+                                </div>
+                                <div class="vendor-description">
+                                    Reliable HVAC service with upfront pricing. No hidden fees.
+                                </div>
+                                <div class="vendor-price">$80/hr · Available today</div>
+                            </div>
+
+                            <button class="btn">Select Cool Breeze HVAC</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-label">
+                    <div class="step-number">3</div>
+                    <div class="step-title">3 Vendor Recommendations</div>
+                    <div class="step-desc">1 sponsored + 2 organic (sorted by rating). Verified, licensed, and in service area.</div>
+                </div>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <!-- Step 4: Live Scheduling -->
+            <div class="flow-step">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div class="screen-header">
+                                <div class="screen-title">Select Date & Time</div>
+                                <div class="screen-subtitle">Cool Breeze HVAC availability</div>
+                            </div>
+
+                            <div class="section">
+                                <div class="section-title">Choose a date</div>
+                                <div class="date-selector">
+                                    <div class="date-option selected">
+                                        <div class="date-day">TODAY</div>
+                                        <div class="date-date">Jan 5</div>
+                                    </div>
+                                    <div class="date-option">
+                                        <div class="date-day">MON</div>
+                                        <div class="date-date">Jan 6</div>
+                                    </div>
+                                    <div class="date-option">
+                                        <div class="date-day">TUE</div>
+                                        <div class="date-date">Jan 7</div>
+                                    </div>
+                                    <div class="date-option">
+                                        <div class="date-day">WED</div>
+                                        <div class="date-date">Jan 8</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                <div class="section-title">Available times</div>
+                                <div class="time-grid">
+                                    <div class="time-slot unavailable">
+                                        <div class="time-slot-time">9:00 AM</div>
+                                        <div class="time-slot-label">Unavailable</div>
+                                    </div>
+                                    <div class="time-slot unavailable">
+                                        <div class="time-slot-time">11:00 AM</div>
+                                        <div class="time-slot-label">Unavailable</div>
+                                    </div>
+                                    <div class="time-slot selected">
+                                        <div class="time-slot-time">2:00 PM</div>
+                                        <div class="time-slot-label">2 hour window</div>
+                                    </div>
+                                    <div class="time-slot">
+                                        <div class="time-slot-time">4:00 PM</div>
+                                        <div class="time-slot-label">2 hour window</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="confirm-card">
+                                <div class="confirm-row">
+                                    <div class="confirm-label">Vendor</div>
+                                    <div class="confirm-value">Cool Breeze HVAC</div>
+                                </div>
+                                <div class="confirm-row">
+                                    <div class="confirm-label">Date</div>
+                                    <div class="confirm-value">Today, Jan 5</div>
+                                </div>
+                                <div class="confirm-row">
+                                    <div class="confirm-label">Time Window</div>
+                                    <div class="confirm-value">2:00 PM - 4:00 PM</div>
+                                </div>
+                                <div class="confirm-row">
+                                    <div class="confirm-label">Service Rate</div>
+                                    <div class="confirm-value">$85/hour</div>
+                                </div>
+                            </div>
+
+                            <button class="btn">Confirm Appointment</button>
+                            <button class="btn btn-secondary" style="margin-top: 12px;">Choose Different Time</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-label">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Live Scheduling</div>
+                    <div class="step-desc">Real-time availability from vendor. Pick date and time slot. Instant booking.</div>
+                </div>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <!-- Step 5: Confirmation -->
+            <div class="flow-step">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div style="padding-top: 60px;">
+                                <div class="success-icon">✓</div>
+                                <div class="success-title">Appointment Confirmed!</div>
+                                <div class="success-text">
+                                    Cool Breeze HVAC has accepted your booking. John Martinez will arrive between 2:00 PM - 4:00 PM today.
+                                </div>
+
+                                <div class="confirm-card">
+                                    <div style="text-align: center; margin-bottom: 20px;">
+                                        <div style="font-size: 48px; margin-bottom: 8px;">🔧</div>
+                                        <div style="font-size: 20px; font-weight: 600; color: #2C2C2C; margin-bottom: 4px;">John Martinez</div>
+                                        <div style="font-size: 14px; color: #8A8A8A;">Lead HVAC Technician</div>
+                                    </div>
+
+                                    <div class="confirm-row">
+                                        <div class="confirm-label">Date</div>
+                                        <div class="confirm-value">Today, Jan 5, 2026</div>
+                                    </div>
+                                    <div class="confirm-row">
+                                        <div class="confirm-label">Time Window</div>
+                                        <div class="confirm-value">2:00 PM - 4:00 PM</div>
+                                    </div>
+                                    <div class="confirm-row">
+                                        <div class="confirm-label">Issue</div>
+                                        <div class="confirm-value">HVAC Repair</div>
+                                    </div>
+                                    <div class="confirm-row">
+                                        <div class="confirm-label">Service Rate</div>
+                                        <div class="confirm-value">$85/hour</div>
+                                    </div>
+                                    <div class="confirm-row">
+                                        <div class="confirm-label">Status</div>
+                                        <div class="confirm-value">
+                                            <span class="badge" style="background: #7FA07F; color: white;">Confirmed</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="background: #F5F3F0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                                    <div style="font-size: 14px; color: #5A5A5A; line-height: 1.6;">
+                                        <strong>What's next:</strong><br>
+                                        • You'll receive SMS 30 min before arrival<br>
+                                        • Technician will check in when on-site<br>
+                                        • Payment processed after job completion<br>
+                                        • Review request sent after confirmation
+                                    </div>
+                                </div>
+
+                                <button class="btn">View Appointment Details</button>
+                                <button class="btn btn-secondary" style="margin-top: 12px;">Message Vendor</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-label">
+                    <div class="step-number">5</div>
+                    <div class="step-title">Confirmed!</div>
+                    <div class="step-desc">Vendor auto-accepts. Homeowner gets confirmation with technician info and what's next.</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 60px; background: white; border-radius: 20px; padding: 40px; max-width: 800px; margin-left: auto; margin-right: auto;">
+            <h2 style="text-align: center; color: #2C2C2C; margin-bottom: 30px; font-size: 28px; font-weight: 400;">Key Differentiators</h2>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px;">
+                <div>
+                    <div style="font-size: 32px; margin-bottom: 12px;">🎯</div>
+                    <h3 style="font-size: 18px; color: #2C2C2C; margin-bottom: 8px; font-weight: 600;">Exactly 3 Vendors</h3>
+                    <p style="font-size: 14px; color: #5A5A5A; line-height: 1.6;">
+                        1 sponsored + 2 organic (sorted by rating). No endless scrolling, no comparison fatigue.
+                    </p>
+                </div>
+
+                <div>
+                    <div style="font-size: 32px; margin-bottom: 12px;">⚡</div>
+                    <h3 style="font-size: 18px; color: #2C2C2C; margin-bottom: 8px; font-weight: 600;">AI Triage</h3>
+                    <p style="font-size: 14px; color: #5A5A5A; line-height: 1.6;">
+                        Automatic urgency detection, category matching, and cost estimation from natural language.
+                    </p>
+                </div>
+
+                <div>
+                    <div style="font-size: 32px; margin-bottom: 12px;">📅</div>
+                    <h3 style="font-size: 18px; color: #2C2C2C; margin-bottom: 8px; font-weight: 600;">Live Scheduling</h3>
+                    <p style="font-size: 14px; color: #5A5A5A; line-height: 1.6;">
+                        Real-time availability. Book instantly. Vendor auto-accepts or confirms within 15 minutes.
+                    </p>
+                </div>
+
+                <div>
+                    <div style="font-size: 32px; margin-bottom: 12px;">✓</div>
+                    <h3 style="font-size: 18px; color: #2C2C2C; margin-bottom: 8px; font-weight: 600;">Verified Only</h3>
+                    <p style="font-size: 14px; color: #5A5A5A; line-height: 1.6;">
+                        All vendors verified, licensed, insured, and background checked. Premium quality guaranteed.
+                    </p>
+                </div>
+
+                <div>
+                    <div style="font-size: 32px; margin-bottom: 12px;">🛡️</div>
+                    <h3 style="font-size: 18px; color: #2C2C2C; margin-bottom: 8px; font-weight: 600;">Job Ledger</h3>
+                    <p style="font-size: 14px; color: #5A5A5A; line-height: 1.6;">
+                        Completion proof required (photos + invoice + timestamps). Vendor paid after homeowner confirms.
+                    </p>
+                </div>
+
+                <div>
+                    <div style="font-size: 32px; margin-bottom: 12px;">💰</div>
+                    <h3 style="font-size: 18px; color: #2C2C2C; margin-bottom: 8px; font-weight: 600;">Transparent Pricing</h3>
+                    <p style="font-size: 14px; color: #5A5A5A; line-height: 1.6;">
+                        Upfront hourly rates. No hidden fees. Final invoice after job completion. Auto-confirm in 48h.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
