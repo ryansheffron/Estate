@@ -222,7 +222,7 @@ Complete design system with:
 - Large touch targets
 
 **Microcopy**:
-- "We'll take care of this."
+- "We gotta guy."
 - "Everything is on schedule."
 - "Your home is in perfect harmony."
 - Calm, reassuring, never stressful

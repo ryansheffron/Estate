@@ -105,7 +105,7 @@ Search maintenance categories...
 ```
 ═══════════════════════════════════════
   Customer Care
-  We'll take care of this
+  We gotta guy
 ═══════════════════════════════════════
 
 💬 What can we help with?
@@ -528,7 +528,7 @@ AuditLog
 - Premium feel without being sterile
 
 **Microcopy:**
-- "We'll take care of this" (not "Task submitted")
+- "We gotta guy" (not "Task submitted")
 - "All systems running smoothly" (not "No issues")
 - "Your Home Health" (not "Status")
 - Calm, reassuring tone throughout
