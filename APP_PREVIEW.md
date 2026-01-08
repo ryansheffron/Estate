@@ -158,9 +158,10 @@ AI Triage analyzes:
 • Category: HVAC
 • Urgency: HIGH
 • Likely needs: Repair (not replacement)
-• Suggested response: "Same-day appointment
-  recommended. We'll match you with verified
-  HVAC specialists in your area."
+• Scheduling Window: 24-48 hours (urgent)
+• Suggested response: "Urgent service needed.
+  We'll match you with verified HVAC specialists
+  available within 24-48 hours."
 
 ↓
 
@@ -180,13 +181,20 @@ User selects: Cool Breeze HVAC
 Status: VENDOR_MATCHED
 ```
 
-#### 3. **Live Scheduling**
+#### 3. **Priority-Based Scheduling**
 ```
-Available Slots:
+HIGH PRIORITY (24-48 hour window):
 • Today, Jan 5: 8-12 AM
 • Today, Jan 5: 12-5 PM
+• Tomorrow, Jan 6: 8-12 AM
+• Tomorrow, Jan 6: 12-5 PM
 
-User books: Today, 12-5 PM
+MODERATE/LOW PRIORITY (2-7 day window):
+• Jan 7: 8-12 AM, 12-5 PM
+• Jan 8: 8-12 AM, 12-5 PM
+• Jan 9-12: Available slots shown
+
+User books: Today, 12-5 PM (HIGH priority)
 
 Vendor auto-accepts (or confirms within 15 min)
 Status: SCHEDULED
@@ -547,12 +555,15 @@ AuditLog
 - Vendor only gets paid after homeowner confirmation
 - Auto-confirm after 48 hours if no dispute
 
-### **AI Triage System**
+### **AI Triage System with Priority-Based Scheduling**
 ```javascript
 // backend/src/ai/triage.service.ts
 
 analyzes:
 • Urgency (CRITICAL, HIGH, NORMAL, LOW)
+• Scheduling Windows:
+  - HIGH Priority: 24-48 hour window (urgent/emergency)
+  - MODERATE/LOW Priority: 2-7 day window (planned maintenance)
 • Category detection from natural language
 • Replacement need (triggers warranty tracking)
 • Escalation (legal threats, safety hazards)
