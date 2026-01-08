@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estate Standard - App Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #E8E6E3 0%, #D4D2CF 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2C2C2C;
+        }
+
+        .header h1 {
+            font-size: 42px;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 18px;
+            color: #5A5A5A;
+            font-weight: 300;
+        }
+
+        .phones {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .phone {
+            background: #2C2C2C;
+            border-radius: 40px;
+            padding: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 380px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .phone-screen {
+            background: #F5F3F0;
+            border-radius: 32px;
+            overflow: hidden;
+            height: 720px;
+            overflow-y: auto;
+        }
+
+        .phone-screen::-webkit-scrollbar {
+            width: 0;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: #F5F3F0;
+            padding: 12px 24px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #2C2C2C;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            padding: 24px;
+        }
+
+        /* Hero Section */
+        .hero {
+            margin-bottom: 32px;
+        }
+
+        .greeting {
+            font-size: 16px;
+            color: #5A5A5A;
+            margin-bottom: 4px;
+            font-weight: 400;
+        }
+
+        .home-title {
+            font-size: 28px;
+            color: #2C2C2C;
+            font-weight: 400;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #8A8A8A;
+            font-weight: 400;
+        }
+
+        /* Status Card */
+        .status-card {
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            text-align: center;
+        }
+
+        .status-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .status-title {
+            font-size: 20px;
+            color: #2C2C2C;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .status-subtitle {
+            font-size: 14px;
+            color: #5A5A5A;
+            line-height: 1.6;
+        }
+
+        /* Section */
+        .section {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            color: #2C2C2C;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        /* Action Card */
+        .action-card {
+            background: #FFFFFF;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .action-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .action-icon {
+            width: 40px;
+            height: 40px;
+            background: #F5F3F0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .action-content {
+            flex: 1;
+        }
+
+        .action-title {
+            font-size: 16px;
+            color: #2C2C2C;
+            margin-bottom: 2px;
+            font-weight: 500;
+        }
+
+        .action-subtitle {
+            font-size: 13px;
+            color: #8A8A8A;
+        }
+
+        .chevron {
+            color: #B5B5B5;
+            font-size: 20px;
+        }
+
+        /* Upcoming Card */
+        .upcoming-card {
+            background: #FFFFFF;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            gap: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+
+        .upcoming-date {
+            width: 56px;
+            height: 56px;
+            background: #9BAA8E;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .upcoming-month {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .upcoming-day {
+            font-size: 24px;
+            font-weight: 300;
+            line-height: 1;
+        }
+
+        .upcoming-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .upcoming-title {
+            font-size: 16px;
+            color: #2C2C2C;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .upcoming-subtitle {
+            font-size: 13px;
+            color: #8A8A8A;
+        }
+
+        /* Category Card */
+        .category-group {
+            margin-bottom: 24px;
+        }
+
+        .category-group-title {
+            font-size: 13px;
+            color: #8A8A8A;
+            margin-bottom: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .category-item {
+            background: #FFFFFF;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+
+        .category-info h4 {
+            font-size: 16px;
+            color: #2C2C2C;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .category-info p {
+            font-size: 13px;
+            color: #8A8A8A;
+        }
+
+        .category-status {
+            font-size: 20px;
+        }
+
+        /* Request Card */
+        .request-card {
+            background: #FFFFFF;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+
+        .request-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .request-icon {
+            font-size: 24px;
+        }
+
+        .request-content {
+            flex: 1;
+        }
+
+        .request-title {
+            font-size: 16px;
+            color: #2C2C2C;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .request-status {
+            font-size: 13px;
+            color: #7FA07F;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .request-details {
+            font-size: 13px;
+            color: #8A8A8A;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 8px;
+        }
+
+        .badge-success {
+            background: #7FA07F;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #D4A574;
+            color: white;
+        }
+
+        /* Input */
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-label {
+            font-size: 14px;
+            color: #5A5A5A;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            background: #FFFFFF;
+            border: 1px solid #E8E6E3;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 15px;
+            color: #2C2C2C;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        textarea::placeholder {
+            color: #B5B5B5;
+        }
+
+        .upload-btn {
+            background: #FFFFFF;
+            border: 2px dashed #E8E6E3;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            color: #8A8A8A;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-btn:hover {
+            border-color: #9BAA8E;
+            color: #9BAA8E;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: sticky;
+            bottom: 0;
+            background: #FFFFFF;
+            border-top: 1px solid #E8E6E3;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #8A8A8A;
+            font-size: 11px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .nav-item.active {
+            color: #4A5F7A;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        .label {
+            margin-top: 40px;
+            text-align: center;
+            color: #2C2C2C;
+            font-size: 16px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Estate Standard</h1>
+            <p>The White-Glove Homeowner Concierge</p>
+        </div>
+
+        <div class="phones">
+            <!-- Phone 1: Home Screen -->
+            <div>
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div class="hero">
+                                <div class="greeting">Good morning</div>
+                                <div class="home-title">1234 Oak Ridge Drive</div>
+                                <div class="subtitle">Northlake, TX</div>
+                            </div>
+
+                            <div class="status-card">
+                                <div class="status-icon">✓</div>
+                                <div class="status-title">Everything is handled</div>
+                                <div class="status-subtitle">Your home is in perfect harmony. All systems are maintained.</div>
+                            </div>
+
+                            <div class="section">
+                                <div class="section-title">Quick Actions</div>
+
+                                <div class="action-card">
+                                    <div class="action-icon">➕</div>
+                                    <div class="action-content">
+                                        <div class="action-title">Request Service</div>
+                                        <div class="action-subtitle">Get help with an issue</div>
+                                    </div>
+                                    <div class="chevron">›</div>
+                                </div>
+
+                                <div class="action-card">
+                                    <div class="action-icon">📅</div>
+                                    <div class="action-content">
+                                        <div class="action-title">Schedule Maintenance</div>
+                                        <div class="action-subtitle">Book a recurring service</div>
+                                    </div>
+                                    <div class="chevron">›</div>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                <div class="section-title">Upcoming</div>
+
+                                <div class="upcoming-card">
+                                    <div class="upcoming-date">
+                                        <div class="upcoming-month">JAN</div>
+                                        <div class="upcoming-day">20</div>
+                                    </div>
+                                    <div class="upcoming-content">
+                                        <div class="upcoming-title">Landscaping</div>
+                                        <div class="upcoming-subtitle">Green Horizon · Monthly service</div>
+                                    </div>
+                                </div>
+
+                                <div class="upcoming-card">
+                                    <div class="upcoming-date">
+                                        <div class="upcoming-month">MAR</div>
+                                        <div class="upcoming-day">15</div>
+                                    </div>
+                                    <div class="upcoming-content">
+                                        <div class="upcoming-title">HVAC Maintenance</div>
+                                        <div class="upcoming-subtitle">Cool Breeze HVAC · Quarterly service</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bottom-nav">
+                            <div class="nav-item active">
+                                <div class="nav-icon">🏠</div>
+                                <div>Home</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">📋</div>
+                                <div>Guide</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">💬</div>
+                                <div>Care</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">👤</div>
+                                <div>Profile</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="label">Home Screen</div>
+            </div>
+
+            <!-- Phone 2: Maintenance Guide -->
+            <div>
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div class="hero">
+                                <div class="home-title">Maintenance Guide</div>
+                                <div class="subtitle">38 Categories · Automated Tracking</div>
+                            </div>
+
+                            <div class="category-group">
+                                <div class="category-group-title">🔥 Critical Systems</div>
+
+                                <div class="category-item">
+                                    <div class="category-info">
+                                        <h4>HVAC System</h4>
+                                        <p>Last serviced: 2 months ago</p>
+                                    </div>
+                                    <div class="category-status">✅</div>
+                                </div>
+
+                                <div class="category-item">
+                                    <div class="category-info">
+                                        <h4>Plumbing</h4>
+                                        <p>Inspection needed</p>
+                                    </div>
+                                    <div class="category-status">⚠️</div>
+                                </div>
+
+                                <div class="category-item">
+                                    <div class="category-info">
+                                        <h4>Electrical Panel</h4>
+                                        <p>Last serviced: 4 months ago</p>
+                                    </div>
+                                    <div class="category-status">✅</div>
+                                </div>
+                            </div>
+
+                            <div class="category-group">
+                                <div class="category-group-title">💧 Water Systems</div>
+
+                                <div class="category-item">
+                                    <div class="category-info">
+                                        <h4>Water Heater</h4>
+                                        <p>Annual inspection current</p>
+                                    </div>
+                                    <div class="category-status">✅</div>
+                                </div>
+
+                                <div class="category-item">
+                                    <div class="category-info">
+                                        <h4>Irrigation System</h4>
+                                        <p>Service due in 15 days</p>
+                                    </div>
+                                    <div class="category-status">⏰</div>
+                                </div>
+
+                                <div class="category-item">
+                                    <div class="category-info">
+                                        <h4>Gutters & Downspouts</h4>
+                                        <p>Overdue by 5 days</p>
+                                    </div>
+                                    <div class="category-status">⚠️</div>
+                                </div>
+                            </div>
+
+                            <div class="category-group">
+                                <div class="category-group-title">🏡 Exterior</div>
+
+                                <div class="category-item">
+                                    <div class="category-info">
+                                        <h4>Roof Inspection</h4>
+                                        <p>Last inspected: 6 months ago</p>
+                                    </div>
+                                    <div class="category-status">✅</div>
+                                </div>
+
+                                <div class="category-item">
+                                    <div class="category-info">
+                                        <h4>Driveway & Walkways</h4>
+                                        <p>Sealing due soon</p>
+                                    </div>
+                                    <div class="category-status">⏰</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bottom-nav">
+                            <div class="nav-item">
+                                <div class="nav-icon">🏠</div>
+                                <div>Home</div>
+                            </div>
+                            <div class="nav-item active">
+                                <div class="nav-icon">📋</div>
+                                <div>Guide</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">💬</div>
+                                <div>Care</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">👤</div>
+                                <div>Profile</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="label">Maintenance Guide</div>
+            </div>
+
+            <!-- Phone 3: Customer Care -->
+            <div>
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div class="hero">
+                                <div class="home-title">Customer Care</div>
+                                <div class="subtitle">We'll take care of this</div>
+                            </div>
+
+                            <div class="input-group">
+                                <label class="input-label">💬 What can we help with?</label>
+                                <textarea placeholder="Describe your issue..."></textarea>
+                            </div>
+
+                            <div class="upload-btn">
+                                📷 Add photos (optional)
+                            </div>
+
+                            <div class="section" style="margin-top: 32px;">
+                                <div class="section-title">Active Requests</div>
+
+                                <div class="request-card">
+                                    <div class="request-header">
+                                        <div class="request-icon">🔥</div>
+                                        <div class="request-content">
+                                            <div class="request-title">HVAC not cooling properly</div>
+                                            <div class="request-status">Vendor en route</div>
+                                            <div class="request-details">Cool Breeze HVAC · Arriving: 2:00 PM</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="request-card">
+                                    <div class="request-header">
+                                        <div class="request-icon">💧</div>
+                                        <div class="request-content">
+                                            <div class="request-title">Gutter cleaning needed</div>
+                                            <div class="request-status">Scheduled</div>
+                                            <div class="request-details">Green Horizon · Jan 18, 10:00 AM</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                <div class="section-title">Completed</div>
+
+                                <div class="request-card">
+                                    <div class="request-header">
+                                        <div class="request-icon">✅</div>
+                                        <div class="request-content">
+                                            <div class="request-title">Plumbing leak repair</div>
+                                            <div class="request-details">DFW Plumbing Pros · Jan 2, 2026</div>
+                                            <div class="badge badge-success">$185.00</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bottom-nav">
+                            <div class="nav-item">
+                                <div class="nav-icon">🏠</div>
+                                <div>Home</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">📋</div>
+                                <div>Guide</div>
+                            </div>
+                            <div class="nav-item active">
+                                <div class="nav-icon">💬</div>
+                                <div>Care</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">👤</div>
+                                <div>Profile</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="label">Customer Care</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
