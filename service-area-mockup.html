@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estate Standard - Service Area Maps</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #E8E6E3 0%, #D4D2CF 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2C2C2C;
+        }
+
+        .header h1 {
+            font-size: 42px;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 18px;
+            color: #5A5A5A;
+            font-weight: 300;
+        }
+
+        .phones {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .phone {
+            background: #2C2C2C;
+            border-radius: 40px;
+            padding: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 380px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .phone-screen {
+            background: #F5F3F0;
+            border-radius: 32px;
+            overflow: hidden;
+            height: 720px;
+            overflow-y: auto;
+        }
+
+        .phone-screen::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .phone-screen::-webkit-scrollbar-track {
+            background: #E8E6E3;
+            border-radius: 3px;
+        }
+
+        .phone-screen::-webkit-scrollbar-thumb {
+            background: #9BAA8E;
+            border-radius: 3px;
+        }
+
+        .label {
+            margin-top: 20px;
+            text-align: center;
+            color: #2C2C2C;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: #F5F3F0;
+            padding: 12px 24px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #2C2C2C;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            padding: 24px;
+        }
+
+        /* Header */
+        .screen-header {
+            margin-bottom: 20px;
+        }
+
+        .screen-title {
+            font-size: 28px;
+            color: #2C2C2C;
+            font-weight: 400;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+
+        .screen-subtitle {
+            font-size: 14px;
+            color: #8A8A8A;
+            font-weight: 400;
+        }
+
+        /* Map Container */
+        .map-container {
+            position: relative;
+            background: linear-gradient(135deg, #B8D4C8 0%, #A8C4B8 100%);
+            border-radius: 16px;
+            height: 300px;
+            margin-bottom: 24px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .radius-circle {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(155, 170, 142, 0.2);
+            border: 3px dashed #9BAA8E;
+            position: relative;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .center-pin {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .radius-label {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #2C2C2C;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        /* Card */
+        .card {
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .card-title {
+            font-size: 16px;
+            color: #2C2C2C;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        /* Slider */
+        .slider-container {
+            margin-bottom: 20px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .slider-text {
+            font-size: 14px;
+            color: #5A5A5A;
+        }
+
+        .slider-value {
+            font-size: 18px;
+            color: #2C2C2C;
+            font-weight: 600;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #E8E6E3;
+            outline: none;
+            margin-bottom: 8px;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #9BAA8E;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #9BAA8E;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border: none;
+        }
+
+        .slider-marks {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #B5B5B5;
+            padding: 0 4px;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: #F5F3F0;
+            border-left: 4px solid #9BAA8E;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box-title {
+            font-size: 14px;
+            color: #2C2C2C;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .info-box-text {
+            font-size: 13px;
+            color: #5A5A5A;
+            line-height: 1.6;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 16px;
+            background: #F5F3F0;
+            border-radius: 12px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            color: #2C2C2C;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #8A8A8A;
+        }
+
+        /* Button */
+        .btn {
+            width: 100%;
+            background: #4A5F7A;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #3A4F6A;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(74, 95, 122, 0.3);
+        }
+
+        .btn-secondary {
+            background: #FFFFFF;
+            color: #4A5F7A;
+            border: 2px solid #4A5F7A;
+        }
+
+        .btn-secondary:hover {
+            background: #F5F3F0;
+        }
+
+        /* Feature Summary */
+        .feature-summary {
+            margin-top: 60px;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-item {
+            text-align: left;
+        }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .feature-title {
+            font-size: 18px;
+            color: #2C2C2C;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .feature-desc {
+            font-size: 14px;
+            color: #5A5A5A;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Service Area & Radius Settings</h1>
+            <p>Define your service area with interactive maps</p>
+        </div>
+
+        <div class="phones">
+            <!-- Phone 1: Customer Service Radius -->
+            <div>
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div class="screen-header">
+                                <div class="screen-title">Service Area</div>
+                                <div class="screen-subtitle">Find vendors near you</div>
+                            </div>
+
+                            <!-- Map -->
+                            <div class="map-container">
+                                <div class="map-overlay">
+                                    <div class="radius-circle">
+                                        <div class="center-pin">📍</div>
+                                    </div>
+                                </div>
+                                <div class="radius-label">15 miles</div>
+                            </div>
+
+                            <!-- Radius Slider -->
+                            <div class="card">
+                                <div class="card-title">Search Radius</div>
+                                <div class="slider-container">
+                                    <div class="slider-label">
+                                        <span class="slider-text">How far are you willing to search?</span>
+                                        <span class="slider-value">15 mi</span>
+                                    </div>
+                                    <input type="range" min="5" max="50" value="15" class="slider">
+                                    <div class="slider-marks">
+                                        <span>5 mi</span>
+                                        <span>25 mi</span>
+                                        <span>50 mi</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Info Box -->
+                            <div class="info-box">
+                                <div class="info-box-title">📍 Your Location</div>
+                                <div class="info-box-text">
+                                    1234 Oak Ridge Drive, Northlake, TX 76262
+                                </div>
+                            </div>
+
+                            <!-- Stats -->
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-value">127</div>
+                                    <div class="stat-label">Vendors in Area</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value">4.8★</div>
+                                    <div class="stat-label">Avg Rating</div>
+                                </div>
+                            </div>
+
+                            <button class="btn">Save Preferences</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="label">Customer - Service Radius</div>
+            </div>
+
+            <!-- Phone 2: Vendor Service Area -->
+            <div>
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div class="screen-header">
+                                <div class="screen-title">Service Area</div>
+                                <div class="screen-subtitle">Where do you provide service?</div>
+                            </div>
+
+                            <!-- Map -->
+                            <div class="map-container">
+                                <div class="map-overlay">
+                                    <div class="radius-circle" style="width: 240px; height: 240px; border-color: #7FA07F; background: rgba(127, 160, 127, 0.2);">
+                                        <div class="center-pin">🏢</div>
+                                    </div>
+                                </div>
+                                <div class="radius-label" style="background: #7FA07F; color: white;">25 miles</div>
+                            </div>
+
+                            <!-- Radius Slider -->
+                            <div class="card">
+                                <div class="card-title">Service Radius</div>
+                                <div class="slider-container">
+                                    <div class="slider-label">
+                                        <span class="slider-text">Maximum service distance</span>
+                                        <span class="slider-value">25 mi</span>
+                                    </div>
+                                    <input type="range" min="5" max="50" value="25" class="slider" style="background: #D4E8D4;">
+                                    <div class="slider-marks">
+                                        <span>5 mi</span>
+                                        <span>25 mi</span>
+                                        <span>50 mi</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Info Box -->
+                            <div class="info-box" style="border-color: #7FA07F; background: #F0F8F0;">
+                                <div class="info-box-title">🏢 Business Location</div>
+                                <div class="info-box-text">
+                                    Cool Breeze HVAC<br>
+                                    5678 Business Park Drive, Fort Worth, TX 76137
+                                </div>
+                            </div>
+
+                            <!-- Stats -->
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-value">1,247</div>
+                                    <div class="stat-label">Homeowners in Area</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value">89%</div>
+                                    <div class="stat-label">Coverage Rate</div>
+                                </div>
+                            </div>
+
+                            <button class="btn">Update Service Area</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="label">Vendor - Service Area</div>
+            </div>
+
+            <!-- Phone 3: Matching Preview -->
+            <div>
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>●●●●●</span>
+                        </div>
+
+                        <div class="screen-content">
+                            <div class="screen-header">
+                                <div class="screen-title">Vendor Matching</div>
+                                <div class="screen-subtitle">Distance-based recommendations</div>
+                            </div>
+
+                            <!-- Map with multiple vendors -->
+                            <div class="map-container">
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                                    <div style="width: 180px; height: 180px; border-radius: 50%; background: rgba(155, 170, 142, 0.15); border: 2px dashed #9BAA8E; position: relative;">
+                                        <!-- Customer Pin -->
+                                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px;">📍</div>
+                                        <!-- Vendor Pins -->
+                                        <div style="position: absolute; top: 20%; left: 30%; font-size: 20px;">🏢</div>
+                                        <div style="position: absolute; top: 60%; right: 25%; font-size: 20px;">🏢</div>
+                                        <div style="position: absolute; bottom: 25%; left: 40%; font-size: 20px;">🏢</div>
+                                    </div>
+                                </div>
+                                <div class="radius-label">15 mi radius</div>
+                            </div>
+
+                            <!-- Vendor Cards -->
+                            <div class="card" style="border: 2px solid #9BAA8E;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                    <div>
+                                        <div style="font-size: 18px; font-weight: 600; color: #2C2C2C; margin-bottom: 4px;">Cool Breeze HVAC</div>
+                                        <div style="font-size: 14px; color: #5A5A5A;">⭐ 4.9 (127 reviews)</div>
+                                    </div>
+                                    <div style="background: #7FA07F; color: white; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 600;">SPONSORED</div>
+                                </div>
+                                <div style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 13px; color: #8A8A8A;">
+                                    <div>📍 2.3 mi</div>
+                                    <div>✓ Licensed</div>
+                                    <div>🛡️ Insured</div>
+                                </div>
+                                <div style="font-size: 16px; color: #2C2C2C; font-weight: 600;">$85/hr · Available today</div>
+                            </div>
+
+                            <div class="card">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                    <div>
+                                        <div style="font-size: 18px; font-weight: 600; color: #2C2C2C; margin-bottom: 4px;">DFW Climate Control</div>
+                                        <div style="font-size: 14px; color: #5A5A5A;">⭐ 4.8 (89 reviews)</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 13px; color: #8A8A8A;">
+                                    <div>📍 4.7 mi</div>
+                                    <div>✓ Licensed</div>
+                                    <div>🛡️ Insured</div>
+                                </div>
+                                <div style="font-size: 16px; color: #2C2C2C; font-weight: 600;">$95/hr · Available today</div>
+                            </div>
+
+                            <div class="card">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                    <div>
+                                        <div style="font-size: 18px; font-weight: 600; color: #2C2C2C; margin-bottom: 4px;">Texas Temp Solutions</div>
+                                        <div style="font-size: 14px; color: #5A5A5A;">⭐ 4.7 (64 reviews)</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 13px; color: #8A8A8A;">
+                                    <div>📍 8.2 mi</div>
+                                    <div>✓ Licensed</div>
+                                    <div>🛡️ Insured</div>
+                                </div>
+                                <div style="font-size: 16px; color: #2C2C2C; font-weight: 600;">$80/hr · Available tomorrow</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="label">Vendor Matching with Distance</div>
+            </div>
+        </div>
+
+        <!-- Feature Summary -->
+        <div class="feature-summary">
+            <h2 style="text-align: center; color: #2C2C2C; margin-bottom: 30px; font-size: 28px; font-weight: 400;">Service Radius Features</h2>
+
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🗺️</div>
+                    <h3 class="feature-title">Interactive Maps</h3>
+                    <p class="feature-desc">
+                        Visual radius selection with real-time map preview. See your service area coverage with animated radius circles.
+                    </p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">📏</div>
+                    <h3 class="feature-title">Adjustable Radius</h3>
+                    <p class="feature-desc">
+                        5-50 mile radius options. Customers set search distance, vendors set service coverage. Flexible and customizable.
+                    </p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">📍</div>
+                    <h3 class="feature-title">Distance-Based Matching</h3>
+                    <p class="feature-desc">
+                        Vendors sorted by distance from customer. Shows exact mileage in recommendations. Prioritizes nearby professionals.
+                    </p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🎯</div>
+                    <h3 class="feature-title">Smart Filtering</h3>
+                    <p class="feature-desc">
+                        Only shows vendors within customer's radius AND customer within vendor's service area. Two-way matching validation.
+                    </p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="feature-title">Area Statistics</h3>
+                    <p class="feature-desc">
+                        See vendor count, average ratings, and coverage stats for your area. Make informed decisions about service radius.
+                    </p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🔄</div>
+                    <h3 class="feature-title">Real-Time Updates</h3>
+                    <p class="feature-desc">
+                        Radius changes update immediately. Vendor availability reflects service area. Dynamic matching as vendors adjust coverage.
+                    </p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🏢</div>
+                    <h3 class="feature-title">Business Location</h3>
+                    <p class="feature-desc">
+                        Vendors set primary business location. Radius calculated from business address. Multiple service zones coming soon.
+                    </p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">💡</div>
+                    <h3 class="feature-title">Smart Recommendations</h3>
+                    <p class="feature-desc">
+                        System suggests optimal radius based on area density. Alerts if radius too small (no vendors) or too large (quality dilution).
+                    </p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🔒</div>
+                    <h3 class="feature-title">Privacy Protected</h3>
+                    <p class="feature-desc">
+                        Exact address hidden until booking confirmed. Vendors see general area, not specific location. Address revealed after acceptance.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
