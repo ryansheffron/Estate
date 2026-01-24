@@ -555,6 +555,37 @@ AuditLog
 - Vendor only gets paid after homeowner confirmation
 - Auto-confirm after 48 hours if no dispute
 
+### **Dynamic Service Radius with Market Intelligence**
+```javascript
+// backend/src/services/geo.service.ts
+
+Customer Features:
+• Set search radius: 5-50 miles
+• Live vendor count in area
+• Shows "Available Today" count
+• Projects additional vendors if radius expanded
+• Real-time availability updates
+
+Vendor Features:
+• Set service area: 5-50 miles
+• Dynamic "Boost Radius" during slow periods
+• Market intelligence: shows potential job increase
+• See homeowner count in expanded area
+• Adjust radius anytime (immediately affects matching)
+
+Matching Logic:
+• Two-way validation: customer in vendor radius AND vendor in customer radius
+• Distance-based sorting (closest first)
+• Real-time updates as vendors adjust coverage
+• Privacy: exact address hidden until booking confirmed
+
+Benefits:
+• Vendors can expand reach during slow weeks
+• Customers get more options when vendors boost
+• Better pricing competition
+• Faster service availability
+```
+
 ### **AI Triage System with Priority-Based Scheduling**
 ```javascript
 // backend/src/ai/triage.service.ts
