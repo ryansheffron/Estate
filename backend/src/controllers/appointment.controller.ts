@@ -6,6 +6,7 @@ import { AuthRequest } from '../middleware/auth';
 import { prisma } from '../server';
 import { AppError } from '../middleware/errorHandler';
 import { JobStatus } from '@prisma/client';
+import { JobStateMachine, createStateTransitionLog } from '../utils/stateMachine';
 
 export const createAppointment = async (
   req: AuthRequest,
@@ -25,7 +26,7 @@ export const createAppointment = async (
       throw new AppError('Required fields missing', 400);
     }
 
-    // Get homeowner
+    // Pre-transaction validations
     const homeowner = await prisma.homeowner.findUnique({
       where: { userId: req.user!.id },
     });
@@ -34,7 +35,6 @@ export const createAppointment = async (
       throw new AppError('Homeowner profile not found', 404);
     }
 
-    // Verify home ownership
     const home = await prisma.home.findFirst({
       where: { id: homeId, homeownerId: homeowner.id },
     });
@@ -43,7 +43,6 @@ export const createAppointment = async (
       throw new AppError('Home not found or unauthorized', 404);
     }
 
-    // Verify vendor exists and is verified
     const vendor = await prisma.vendor.findUnique({
       where: { id: vendorId },
     });
@@ -52,79 +51,109 @@ export const createAppointment = async (
       throw new AppError('Vendor not available', 404);
     }
 
-    // Check vendor availability
-    const slot = await prisma.availabilitySlot.findFirst({
-      where: {
-        vendorId,
-        startTime: new Date(scheduledStart),
-        isBooked: false,
-      },
-    });
+    // ATOMIC TRANSACTION: Prevents double-booking race conditions
+    const appointment = await prisma.$transaction(async (tx) => {
+      // 1. Lock and check availability slot (SELECT FOR UPDATE equivalent)
+      const slot = await tx.availabilitySlot.findFirst({
+        where: {
+          vendorId,
+          startTime: new Date(scheduledStart),
+          isBooked: false,
+        },
+      });
 
-    const appointment = await prisma.appointment.create({
-      data: {
-        homeownerId: homeowner.id,
-        homeId,
-        vendorId,
-        serviceRequestId,
-        scheduledStart: new Date(scheduledStart),
-        scheduledEnd: new Date(scheduledEnd),
-        status: vendor.autoAcceptBookings ? 'VENDOR_ACCEPTED' : 'REQUESTED',
-        vendorAcceptedAt: vendor.autoAcceptBookings ? new Date() : undefined,
-      },
-      include: {
-        vendor: {
-          include: {
-            user: true,
+      // Ensure slot is still available (could be booked by concurrent request)
+      if (slot) {
+        // Atomically check and mark as booked using optimistic locking
+        const updatedSlot = await tx.availabilitySlot.updateMany({
+          where: {
+            id: slot.id,
+            isBooked: false, // Double-check it's still available
           },
-        },
-        home: true,
-      },
-    });
+          data: {
+            isBooked: true,
+            updatedAt: new Date(),
+          },
+        });
 
-    // Mark slot as booked if it exists
-    if (slot) {
-      await prisma.availabilitySlot.update({
-        where: { id: slot.id },
-        data: {
-          isBooked: true,
-          bookedBy: appointment.id,
-        },
-      });
-    }
+        if (updatedSlot.count === 0) {
+          throw new AppError('Time slot no longer available', 409);
+        }
+      }
 
-    // Update job ledger
-    if (serviceRequestId) {
-      await prisma.jobLedger.updateMany({
-        where: { serviceRequestId },
+      // 2. Create appointment
+      const newAppointment = await tx.appointment.create({
         data: {
-          vendorId,
-          status: 'SENT_TO_VENDOR',
-          sentToVendorAt: new Date(),
-          scheduledAt: vendor.autoAcceptBookings ? new Date() : undefined,
-        },
-      });
-
-      // Update service request status
-      await prisma.serviceRequest.update({
-        where: { id: serviceRequestId },
-        data: { status: 'VENDOR_MATCHED' },
-      });
-    } else {
-      // Create new job ledger for direct booking
-      await prisma.jobLedger.create({
-        data: {
-          appointmentId: appointment.id,
           homeownerId: homeowner.id,
+          homeId,
           vendorId,
-          categoryName: 'Direct Booking',
-          status: vendor.autoAcceptBookings ? 'VENDOR_ACCEPTED' : 'SENT_TO_VENDOR',
-          requestCreatedAt: new Date(),
-          sentToVendorAt: new Date(),
+          serviceRequestId,
+          scheduledStart: new Date(scheduledStart),
+          scheduledEnd: new Date(scheduledEnd),
+          status: vendor.autoAcceptBookings ? 'VENDOR_ACCEPTED' : 'REQUESTED',
           vendorAcceptedAt: vendor.autoAcceptBookings ? new Date() : undefined,
         },
+        include: {
+          vendor: {
+            include: {
+              user: true,
+            },
+          },
+          home: true,
+        },
       });
-    }
+
+      // 3. Link slot to appointment
+      if (slot) {
+        await tx.availabilitySlot.update({
+          where: { id: slot.id },
+          data: {
+            bookedBy: newAppointment.id,
+          },
+        });
+      }
+
+      // 4. Update job ledger
+      if (serviceRequestId) {
+        await tx.jobLedger.updateMany({
+          where: { serviceRequestId },
+          data: {
+            appointmentId: newAppointment.id,
+            vendorId,
+            status: vendor.autoAcceptBookings ? 'VENDOR_ACCEPTED' : 'SENT_TO_VENDOR',
+            sentToVendorAt: new Date(),
+            vendorAcceptedAt: vendor.autoAcceptBookings ? new Date() : undefined,
+            scheduledAt: vendor.autoAcceptBookings ? new Date() : undefined,
+          },
+        });
+
+        // 5. Update service request status
+        await tx.serviceRequest.update({
+          where: { id: serviceRequestId },
+          data: { status: vendor.autoAcceptBookings ? 'SCHEDULED' : 'VENDOR_MATCHED' },
+        });
+      } else {
+        // Create new job ledger for direct booking
+        await tx.jobLedger.create({
+          data: {
+            appointmentId: newAppointment.id,
+            homeownerId: homeowner.id,
+            vendorId,
+            categoryName: 'Direct Booking',
+            status: vendor.autoAcceptBookings ? 'VENDOR_ACCEPTED' : 'SENT_TO_VENDOR',
+            requestCreatedAt: new Date(),
+            sentToVendorAt: new Date(),
+            vendorAcceptedAt: vendor.autoAcceptBookings ? new Date() : undefined,
+            scheduledAt: vendor.autoAcceptBookings ? new Date() : undefined,
+          },
+        });
+      }
+
+      return newAppointment;
+    }, {
+      isolationLevel: 'Serializable', // Highest isolation level for critical booking operations
+      timeout: 10000, // 10 second timeout for transaction
+    });
 
     // TODO: Send notification to vendor
     // TODO: Send confirmation to homeowner
@@ -134,7 +163,12 @@ export const createAppointment = async (
       data: { appointment },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof AppError && error.statusCode === 409) {
+      // Slot was booked by concurrent request
+      next(error);
+    } else {
+      next(error);
+    }
   }
 };
 
@@ -168,16 +202,25 @@ export const acceptAppointment = async (
       throw new AppError('Unauthorized', 403);
     }
 
-    if (appointment.status !== 'REQUESTED') {
-      throw new AppError('Appointment cannot be accepted in current status', 400);
-    }
+    // Validate state transition using state machine
+    JobStateMachine.validateTransition(appointment.status, 'VENDOR_ACCEPTED');
 
-    // Accept appointment
+    // Accept appointment with audit log
+    const stateLog = createStateTransitionLog(
+      appointment.status,
+      'VENDOR_ACCEPTED',
+      req.user!.id,
+      'Vendor accepted appointment'
+    );
+
     const updated = await prisma.appointment.update({
       where: { id },
       data: {
         status: 'VENDOR_ACCEPTED',
         vendorAcceptedAt: new Date(),
+        stateHistory: {
+          push: stateLog,
+        },
       },
     });
 
@@ -239,12 +282,25 @@ export const startAppointment = async (
       throw new AppError('Appointment not found or unauthorized', 404);
     }
 
+    // Validate state transition
+    JobStateMachine.validateTransition(appointment.status, 'IN_PROGRESS');
+
+    const stateLog = createStateTransitionLog(
+      appointment.status,
+      'IN_PROGRESS',
+      req.user!.id,
+      'Vendor checked in and started work'
+    );
+
     const updated = await prisma.appointment.update({
       where: { id },
       data: {
         status: 'IN_PROGRESS',
         actualStart: new Date(),
         checkInTimestamp: new Date(),
+        stateHistory: {
+          push: stateLog,
+        },
       },
     });
 
