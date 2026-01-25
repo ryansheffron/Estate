@@ -16,6 +16,8 @@
 8. [Job State Machine](#job-state-machine)
 9. [Error Handling](#error-handling)
 10. [Webhooks](#webhooks)
+11. [Idempotency](#idempotency)
+12. [Background Workers](#background-workers)
 
 ---
 
@@ -715,6 +717,179 @@ Content-Type: application/json
 
 ---
 
+## Idempotency
+
+Critical payment endpoints require an `Idempotency-Key` header to prevent duplicate charges from request retries.
+
+### How Idempotency Works
+
+1. **Client generates a unique UUID** for each unique operation
+2. **Include in header**: `Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000`
+3. **Server caches response** for 24 hours
+4. **Retry with same key** returns cached response without re-processing
+
+### Endpoints Requiring Idempotency Key
+
+All payment mutation endpoints require idempotency:
+
+- `POST /api/payments/create-intent` - Create payment intent
+- `POST /api/payments/:id/capture` - Capture payment
+- `POST /api/payments/:id/refund` - Refund payment
+- `POST /api/payments/vendor/connect-account` - Create Stripe Connect account
+
+### Example Request
+
+```http
+POST /api/payments/create-intent
+Authorization: Bearer {accessToken}
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
+{
+  "appointmentId": "appt_123",
+  "amount": 15000
+}
+```
+
+### Error Responses
+
+**Missing Idempotency Key (400):**
+```json
+{
+  "status": "error",
+  "message": "Idempotency-Key header required for POST requests"
+}
+```
+
+**Invalid UUID Format (400):**
+```json
+{
+  "status": "error",
+  "message": "Idempotency-Key must be a valid UUID"
+}
+```
+
+**Request In Progress (409):**
+```json
+{
+  "status": "error",
+  "message": "Request with this idempotency key is already in progress. Please retry later."
+}
+```
+
+### Best Practices
+
+- Generate a new UUID for each unique operation
+- Store the UUID on the client before making the request
+- Use the same UUID when retrying failed requests
+- Don't reuse UUIDs across different operations
+- Keys expire after 24 hours
+
+---
+
+## Background Workers
+
+The Estate Standard backend runs several automated background workers to ensure smooth operations.
+
+### Auto-Confirmation Worker
+
+**Schedule:** Runs every hour
+**Purpose:** Auto-confirms jobs if homeowner doesn't respond within 48 hours
+
+**Process:**
+1. Find jobs in `COMPLETED_BY_VENDOR` status for 48+ hours
+2. Transition status to `COMPLETED_CONFIRMED`
+3. Capture payment via Stripe
+4. Release payout to vendor
+5. Update job ledger
+6. Send notifications to homeowner and vendor
+
+**Triggered Jobs:**
+- All jobs marked complete by vendor 48+ hours ago
+- Ensures vendors get paid even if homeowner is unresponsive
+
+### Appointment Reminder Worker
+
+**Schedule:** Runs every hour
+**Purpose:** Sends appointment reminders 24 hours before scheduled time
+
+**Process:**
+1. Find appointments scheduled in 24-25 hours
+2. Send reminder to homeowner (SMS/email/in-app based on preference)
+3. Send reminder to vendor (SMS/email/in-app)
+
+**Reminder Window:**
+- Sends between 23-25 hours before appointment
+- Reduces no-shows and improves preparation
+
+### Recurring Appointment Worker
+
+**Schedule:** Runs daily at 2 AM
+**Purpose:** Generates appointments from recurring maintenance rules
+
+**Process:**
+1. Find active recurring rules needing appointments
+2. Calculate next appointment date based on frequency
+3. Find available vendor time slots
+4. Create appointment (auto-scheduled or requested based on settings)
+5. Update recurring rule with next occurrence date
+6. Send confirmation to homeowner
+
+**Supported Frequencies:**
+- `MONTHLY` - Every month
+- `QUARTERLY` - Every 3 months
+- `SEMI_ANNUAL` - Every 6 months
+- `YEARLY` - Every year
+
+### Cleanup Worker
+
+**Schedule:** Runs daily at 3 AM
+**Purpose:** Removes expired temporary data
+
+**Process:**
+1. Delete expired idempotency keys (24+ hours old)
+2. Delete old refresh tokens (7+ days expired)
+3. Delete old audit logs (90+ days old)
+4. Frees database space and maintains performance
+
+### Manual Worker Triggers (Admin)
+
+Admins can manually trigger workers via API:
+
+```http
+POST /api/admin/workers/auto-confirm
+Authorization: Bearer {adminToken}
+
+{
+  "appointmentId": "appt_123"
+}
+```
+
+```http
+POST /api/admin/workers/send-reminder
+Authorization: Bearer {adminToken}
+
+{
+  "appointmentId": "appt_123"
+}
+```
+
+```http
+POST /api/admin/workers/generate-recurring
+Authorization: Bearer {adminToken}
+
+{
+  "recurringRuleId": "rule_123"
+}
+```
+
+```http
+POST /api/admin/workers/cleanup
+Authorization: Bearer {adminToken}
+```
+
+---
+
 ## Rate Limiting
 
 | Endpoint Type | Limit |
@@ -745,16 +920,51 @@ Content-Type: application/json
 
 ## Production Deployment Checklist
 
+### Required Environment Variables
 - [ ] Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`
-- [ ] Configure `DATABASE_URL` (PostgreSQL)
+- [ ] Configure `DATABASE_URL` (PostgreSQL, not SQLite)
 - [ ] Set `JWT_SECRET` (32+ random characters)
-- [ ] Enable HTTPS
-- [ ] Configure CORS for frontend domain
-- [ ] Set up automated backups
-- [ ] Configure monitoring (Sentry, DataDog)
-- [ ] Test webhook signature verification
-- [ ] Start background workers (auto-confirmation)
+- [ ] Set `JWT_REFRESH_SECRET` (different from JWT_SECRET)
+- [ ] Configure `CORS_ORIGIN` (comma-separated frontend URLs)
+
+### Optional Notification Services
+- [ ] Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (SMS)
+- [ ] Set `EMAIL_API_KEY`, `EMAIL_FROM_ADDRESS`, `EMAIL_FROM_NAME` (Email)
+- [ ] Configure notification preferences per user
+
+### Infrastructure
+- [ ] Enable HTTPS (SSL/TLS certificates)
+- [ ] Set up automated database backups
+- [ ] Configure monitoring (Sentry, DataDog, or New Relic)
+- [ ] Set up log aggregation (CloudWatch, Papertrail)
 - [ ] Configure S3 for file uploads
+
+### Security
+- [ ] Test webhook signature verification
+- [ ] Verify rate limiting is working
+- [ ] Test idempotency key validation
+- [ ] Enable audit logging
+- [ ] Set up PII encryption keys
+
+### Background Workers
+- [ ] Verify auto-confirmation worker runs hourly
+- [ ] Verify reminder worker runs hourly
+- [ ] Verify recurring appointment worker runs daily at 2 AM
+- [ ] Verify cleanup worker runs daily at 3 AM
+- [ ] Test manual worker triggers (admin endpoints)
+
+### Database
+- [ ] Run Prisma migrations: `npx prisma migrate deploy`
+- [ ] Seed maintenance categories: `npx prisma db seed`
+- [ ] Create indexes for performance
+- [ ] Set up read replicas (if needed)
+
+### Testing
+- [ ] Test complete payment flow (intent → capture → payout)
+- [ ] Test auto-confirmation after 48 hours
+- [ ] Test appointment reminders
+- [ ] Test recurring appointment generation
+- [ ] Verify idempotency prevents duplicate charges
 
 ---
 

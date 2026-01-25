@@ -43,6 +43,15 @@ import recurringRoutes from './routes/recurring.routes';
 import paymentRoutes from './routes/payment.routes';
 import messageRoutes from './routes/message.routes';
 
+// Background Workers
+import { startAutoConfirmationWorker } from './workers/autoConfirmation.worker';
+import { startReminderWorker } from './workers/reminder.worker';
+import { startRecurringAppointmentWorker } from './workers/recurringAppointment.worker';
+import { startCleanupWorker } from './workers/cleanup.worker';
+
+// Services
+import NotificationService from './services/notification.service';
+
 // Validate environment variables on startup
 try {
   validateEnvironment();
@@ -200,6 +209,34 @@ async function startServer() {
     logger.info('✅ Database connected');
     console.log('✅ Database connected');
 
+    // Initialize notification service
+    NotificationService.initialize(
+      // SMS config (Twilio) - configure in production
+      process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
+        ? {
+            accountSid: process.env.TWILIO_ACCOUNT_SID,
+            authToken: process.env.TWILIO_AUTH_TOKEN,
+            fromNumber: process.env.TWILIO_FROM_NUMBER || '',
+          }
+        : undefined,
+      // Email config (SendGrid/Resend) - configure in production
+      process.env.EMAIL_API_KEY
+        ? {
+            apiKey: process.env.EMAIL_API_KEY,
+            fromEmail: process.env.EMAIL_FROM_ADDRESS || 'noreply@estatestandard.com',
+            fromName: process.env.EMAIL_FROM_NAME || 'Estate Standard',
+          }
+        : undefined
+    );
+
+    // Start background workers
+    startAutoConfirmationWorker();
+    startReminderWorker();
+    startRecurringAppointmentWorker();
+    startCleanupWorker();
+    logger.info('✅ Background workers started');
+    console.log('✅ Background workers started');
+
     // Start server
     app.listen(PORT, () => {
       const startupMessage = `
@@ -220,6 +257,13 @@ Security Features Enabled:
   ✓ Security headers
   ✓ CORS protection
   ✓ Request timeout
+  ✓ Idempotency protection
+═══════════════════════════════════════════════════
+Background Workers Running:
+  ✓ Auto-confirmation (hourly)
+  ✓ Appointment reminders (hourly)
+  ✓ Recurring appointments (daily at 2 AM)
+  ✓ Cleanup expired data (daily at 3 AM)
 ═══════════════════════════════════════════════════
 `;
       console.log(startupMessage);

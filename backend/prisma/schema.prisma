@@ -360,6 +360,7 @@ model Vendor {
 
   // Payments
   stripeAccountId String?       @unique
+  stripeOnboardingComplete Boolean @default(false)
   payoutMethod    String?       // 'bank' | 'debit_card'
 
   createdAt       DateTime      @default(now())
@@ -489,10 +490,15 @@ model Appointment {
   invoiceUrl          String?          // Uploaded invoice
   checkInTimestamp    DateTime?
   checkOutTimestamp   DateTime?
+  completedAt         DateTime?        // When vendor marked as complete
 
   // Homeowner confirmation
   homeownerConfirmedCompletionAt DateTime?
+  autoConfirmed       Boolean          @default(false)
   autoConfirmedAt     DateTime?        // If no response after 48 hours
+
+  // State machine audit trail
+  stateHistory        Json[]           @default([])  // Array of state transitions
 
   // Dispute
   disputeReason       String?
@@ -627,6 +633,11 @@ model JobLedger {
   // Payment status
   homeownerPaid       Boolean        @default(false)
   vendorPaidOut       Boolean        @default(false)
+  payoutStatus        String?        // 'PENDING' | 'RELEASED' | 'FAILED'
+  payoutReleasedAt    DateTime?
+
+  // Auto-confirmation tracking
+  autoConfirmed       Boolean        @default(false)
 
   // Dispute
   disputeReason       String?
@@ -653,22 +664,41 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum VendorPayoutStatus {
+  PENDING
+  RELEASED
+  FAILED
+}
+
 model Payment {
   id                String        @id @default(cuid())
 
   homeownerId       String
   homeowner         Homeowner     @relation(fields: [homeownerId], references: [id])
 
-  appointmentId     String?
+  appointmentId     String?       @unique
 
   // Stripe
   stripePaymentIntentId String?   @unique
   stripeChargeId    String?
 
   amount            Float
+  platformFee       Float?
+  vendorPayoutAmount Float?
   currency          String        @default("usd")
 
   status            PaymentStatus @default(PENDING)
+
+  // Payment lifecycle timestamps
+  authorizedAt      DateTime?
+  capturedAt        DateTime?
+  failedAt          DateTime?
+  failureReason     String?
+  refundedAt        DateTime?
+
+  // Vendor payout tracking
+  vendorPayoutStatus VendorPayoutStatus @default(PENDING)
+  vendorPayoutReleasedAt DateTime?
 
   // Metadata
   description       String?
@@ -679,6 +709,7 @@ model Payment {
 
   @@index([homeownerId])
   @@index([status])
+  @@index([appointmentId])
   @@map("payments")
 }
 
@@ -711,6 +742,31 @@ model Payout {
   @@index([vendorId])
   @@index([status])
   @@map("payouts")
+}
+
+// Idempotency keys to prevent duplicate requests
+model IdempotencyKey {
+  id            String        @id @default(cuid())
+
+  key           String        @unique  // Client-provided UUID
+  userId        String?                // User who made the request
+
+  // Request details
+  endpoint      String                 // API endpoint
+  method        String                 // HTTP method
+
+  // Response cache
+  statusCode    Int?
+  response      Json?                  // Cached response body
+
+  // Lifecycle
+  createdAt     DateTime      @default(now())
+  expiresAt     DateTime                // 24 hours from creation
+  completedAt   DateTime?
+
+  @@index([key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
 }
 
 // ============================================================================

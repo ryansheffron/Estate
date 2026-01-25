@@ -5,6 +5,7 @@ import cron from 'node-cron';
 import { prisma } from '../server';
 import StripeService from '../services/stripe.service';
 import { JobStateMachine, createStateTransitionLog } from '../utils/stateMachine';
+import NotificationService, { NotificationType } from '../services/notification.service';
 
 const AUTO_CONFIRM_TIMEOUT_HOURS = 48;
 
@@ -91,10 +92,39 @@ export function startAutoConfirmationWorker() {
           if (payment) {
             await StripeService.releaseVendorPayout(job.id);
             console.log(`[Auto-Confirmation Worker] Payout released for job ${job.id}`);
+
+            // Notify vendor about payout release
+            await NotificationService.send(
+              NotificationType.PAYOUT_RELEASED,
+              {
+                userId: job.vendor.userId,
+                email: job.vendor.user.email,
+                phone: job.vendor.user.phone || undefined,
+                firstName: job.vendor.user.firstName,
+                lastName: job.vendor.user.lastName,
+              },
+              {
+                amount: payment.vendorPayoutAmount?.toFixed(2) || '0.00',
+                jobDescription: `Job #${job.id}`,
+              }
+            );
           }
 
-          // TODO: Send notification to homeowner about auto-confirmation
-          // TODO: Send notification to vendor about payout release
+          // Notify homeowner about auto-confirmation
+          await NotificationService.send(
+            NotificationType.JOB_AUTO_CONFIRMED,
+            {
+              userId: job.homeowner.userId,
+              email: job.homeowner.user.email,
+              phone: job.homeowner.user.phone || undefined,
+              firstName: job.homeowner.user.firstName,
+              lastName: job.homeowner.user.lastName,
+            },
+            {
+              vendorName: job.vendor.businessName,
+              appointmentId: job.id,
+            }
+          );
 
           console.log(`[Auto-Confirmation Worker] Auto-confirmed job ${job.id}`);
         } catch (error) {
