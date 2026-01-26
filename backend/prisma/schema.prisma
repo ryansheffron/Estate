@@ -351,6 +351,7 @@ model Vendor {
 
   // Rating & reviews
   averageRating   Float         @default(0)
+  estateStandardRating Float    @default(0)  // Average of all Estate Standard ratings
   totalReviews    Int           @default(0)
   totalJobs       Int           @default(0)
 
@@ -376,6 +377,7 @@ model Vendor {
 
   @@index([status])
   @@index([serviceZipCodes])
+  @@index([estateStandardRating])
   @@map("vendors")
 }
 
@@ -449,6 +451,12 @@ enum AppointmentStatus {
   CANCELLED         // Cancelled by either party
 }
 
+enum CompletionOutcome {
+  ISSUE_FIXED           // Job completed successfully
+  RETURN_TRIP_NEEDED    // Additional work required
+  SERVICE_NOT_AGREED    // Service was not as agreed upon
+}
+
 model Appointment {
   id                  String            @id @default(cuid())
 
@@ -479,16 +487,31 @@ model Appointment {
   vendorAcceptedAt    DateTime?
   homeownerConfirmedAt DateTime?
 
+  // Service fee agreement (after appointment confirmed)
+  agreedServiceFee    Float?           // Service fee agreed upon by both parties
+  serviceFeeAgreedAt  DateTime?        // When fee was agreed upon
+  serviceFeeAgreedByHomeowner Boolean  @default(false)
+  serviceFeeAgreedByVendor    Boolean  @default(false)
+
   // Completion proof
   completionPhotos    String[]         // Before/after photos
   completionNotes     String?
   invoiceUrl          String?          // Uploaded invoice
+  invoiceAmount       Float?           // Invoice total entered by vendor
   checkInTimestamp    DateTime?
   checkOutTimestamp   DateTime?
   completedAt         DateTime?        // When vendor marked as complete
 
-  // Homeowner confirmation
-  homeownerConfirmedCompletionAt DateTime?
+  // Completion confirmation (both parties)
+  vendorCompletionOutcome     CompletionOutcome?
+  vendorCompletionConfirmedAt DateTime?
+  vendorCompletionNotes       String?
+
+  homeownerCompletionOutcome     CompletionOutcome?
+  homeownerCompletionConfirmedAt DateTime?
+  homeownerCompletionNotes       String?
+
+  // Legacy homeowner confirmation (kept for backward compatibility)
   autoConfirmed       Boolean          @default(false)
   autoConfirmedAt     DateTime?        // If no response after 48 hours
 
@@ -820,14 +843,22 @@ model Review {
   vendorId      String
   vendor        Vendor      @relation(fields: [vendorId], references: [id])
 
-  // Rating (1-5 stars)
+  // Overall rating (1-5 stars) - calculated from Estate Standard ratings
   rating        Int
 
   // Review content
   title         String?
   comment       String?
 
-  // Specific ratings
+  // Estate Standard Rating Questions (1-5, 1 being the least)
+  arrivalTimeRating        Int  // Service arrival time was met
+  informationProvidedRating Int  // Information provided on issue
+  workmanshipCleanlinessRating Int  // Quality of workmanship and cleanliness
+
+  // Estate Standard Rating (average of the three questions above)
+  estateStandardRating     Float?
+
+  // Legacy specific ratings (optional, for backward compatibility)
   professionalismRating Int?
   qualityRating         Int?
   communicationRating   Int?
@@ -842,6 +873,7 @@ model Review {
 
   @@index([vendorId])
   @@index([rating])
+  @@index([estateStandardRating])
   @@map("reviews")
 }
 

@@ -810,3 +810,269 @@ export const getAppointmentById = async (
     next(error);
   }
 };
+
+// ============================================================================
+// SERVICE FEE AGREEMENT (NEW WORKFLOW)
+// ============================================================================
+
+/**
+ * Agree on service fee (after appointment confirmed, before work starts)
+ * Both homeowner and vendor must agree on the fee
+ */
+export const agreeOnServiceFee = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { serviceFee } = req.body;
+    const user = req.user!;
+
+    if (!serviceFee || serviceFee <= 0) {
+      throw new AppError('Valid service fee is required', 400);
+    }
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        homeowner: { include: { user: true } },
+        vendor: { include: { user: true } },
+      },
+    });
+
+    if (!appointment) {
+      throw new AppError('Appointment not found', 404);
+    }
+
+    // Check if user is part of this appointment
+    const isHomeowner = appointment.homeowner.userId === user.id;
+    const isVendor = appointment.vendor.userId === user.id;
+
+    if (!isHomeowner && !isVendor) {
+      throw new AppError('Unauthorized', 403);
+    }
+
+    // Check if appointment is in correct status
+    if (!['VENDOR_ACCEPTED', 'SCHEDULED'].includes(appointment.status)) {
+      throw new AppError('Cannot agree on service fee at this stage', 400);
+    }
+
+    // Update agreement status
+    const updateData: any = {
+      agreedServiceFee: serviceFee,
+    };
+
+    if (isHomeowner) {
+      updateData.serviceFeeAgreedByHomeowner = true;
+    }
+
+    if (isVendor) {
+      updateData.serviceFeeAgreedByVendor = true;
+    }
+
+    // If both parties have now agreed, set the agreement timestamp
+    const bothAgreed =
+      (isHomeowner && appointment.serviceFeeAgreedByVendor) ||
+      (isVendor && appointment.serviceFeeAgreedByHomeowner) ||
+      (updateData.serviceFeeAgreedByHomeowner && updateData.serviceFeeAgreedByVendor);
+
+    if (bothAgreed) {
+      updateData.serviceFeeAgreedAt = new Date();
+      updateData.status = 'SCHEDULED'; // Move to scheduled once fee is agreed
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data: updateData,
+      include: {
+        homeowner: { include: { user: true } },
+        vendor: { include: { user: true } },
+      },
+    });
+
+    res.json({
+      status: 'success',
+      message: bothAgreed
+        ? 'Service fee agreed upon by both parties'
+        : 'Your agreement on service fee has been recorded',
+      data: { appointment: updated },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================================
+// COMPLETION CONFIRMATION (NEW WORKFLOW)
+// ============================================================================
+
+/**
+ * Vendor confirms completion with outcome and invoice
+ */
+export const vendorConfirmCompletion = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { outcome, notes, invoiceUrl, invoiceAmount } = req.body;
+    const user = req.user!;
+
+    if (!outcome || !['ISSUE_FIXED', 'RETURN_TRIP_NEEDED', 'SERVICE_NOT_AGREED'].includes(outcome)) {
+      throw new AppError('Valid completion outcome is required', 400);
+    }
+
+    // If work was done, invoice is required
+    if (outcome === 'ISSUE_FIXED' || outcome === 'RETURN_TRIP_NEEDED') {
+      if (!invoiceUrl || !invoiceAmount) {
+        throw new AppError('Invoice URL and amount are required when work is completed', 400);
+      }
+
+      if (invoiceAmount <= 0) {
+        throw new AppError('Invoice amount must be positive', 400);
+      }
+    }
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        vendor: { include: { user: true } },
+        homeowner: { include: { user: true } },
+      },
+    });
+
+    if (!appointment) {
+      throw new AppError('Appointment not found', 404);
+    }
+
+    // Verify user is the vendor for this appointment
+    if (appointment.vendor.userId !== user.id) {
+      throw new AppError('Unauthorized', 403);
+    }
+
+    // Check if appointment is in correct status
+    if (appointment.status !== 'COMPLETED_BY_VENDOR') {
+      throw new AppError('Appointment must be marked as completed by vendor first', 400);
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data: {
+        vendorCompletionOutcome: outcome,
+        vendorCompletionConfirmedAt: new Date(),
+        vendorCompletionNotes: notes,
+        invoiceUrl: invoiceUrl || appointment.invoiceUrl,
+        invoiceAmount: invoiceAmount || appointment.invoiceAmount,
+      },
+      include: {
+        vendor: { include: { user: true } },
+        homeowner: { include: { user: true } },
+      },
+    });
+
+    // TODO: Send notification to homeowner requesting their confirmation
+
+    res.json({
+      status: 'success',
+      message: 'Vendor completion confirmation recorded',
+      data: { appointment: updated },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Homeowner confirms completion with outcome
+ */
+export const homeownerConfirmCompletion = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { outcome, notes } = req.body;
+    const user = req.user!;
+
+    if (!outcome || !['ISSUE_FIXED', 'RETURN_TRIP_NEEDED', 'SERVICE_NOT_AGREED'].includes(outcome)) {
+      throw new AppError('Valid completion outcome is required', 400);
+    }
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        homeowner: { include: { user: true } },
+        vendor: { include: { user: true } },
+        jobLedger: true,
+      },
+    });
+
+    if (!appointment) {
+      throw new AppError('Appointment not found', 404);
+    }
+
+    // Verify user is the homeowner for this appointment
+    if (appointment.homeowner.userId !== user.id) {
+      throw new AppError('Unauthorized', 403);
+    }
+
+    // Check if vendor has confirmed first
+    if (!appointment.vendorCompletionConfirmedAt) {
+      throw new AppError('Vendor must confirm completion first', 400);
+    }
+
+    // Verify invoice amount matches if provided
+    if (appointment.invoiceUrl && appointment.invoiceAmount) {
+      // In a real app, you might validate the invoice PDF matches the amount
+      // For now, we trust that vendor uploaded correct info
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data: {
+        homeownerCompletionOutcome: outcome,
+        homeownerCompletionConfirmedAt: new Date(),
+        homeownerCompletionNotes: notes,
+        status: 'COMPLETED_CONFIRMED',
+      },
+      include: {
+        vendor: { include: { user: true } },
+        homeowner: { include: { user: true } },
+        jobLedger: true,
+      },
+    });
+
+    // Update job ledger if exists
+    if (appointment.jobLedger) {
+      await prisma.jobLedger.update({
+        where: { id: appointment.jobLedger.id },
+        data: {
+          status: 'COMPLETED_CONFIRMED',
+          completedConfirmedAt: new Date(),
+          actualPrice: appointment.invoiceAmount || appointment.agreedServiceFee,
+          hasHomeownerConfirmation: true,
+        },
+      });
+    }
+
+    // If both parties agree issue is fixed, trigger payment release
+    if (
+      outcome === 'ISSUE_FIXED' &&
+      appointment.vendorCompletionOutcome === 'ISSUE_FIXED'
+    ) {
+      // TODO: Trigger vendor payout release (auto-confirmation worker will handle this)
+      // TODO: Prompt homeowner to leave Estate Standard rating
+    }
+
+    res.json({
+      status: 'success',
+      message: 'Homeowner completion confirmation recorded',
+      data: { appointment: updated },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
