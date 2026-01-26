@@ -743,8 +743,6 @@ async function seed() {
       data: {
         vendorId: vendor1.id,
         categoryId: hvacCategory.id,
-        basePrice: 150,
-        priceNote: 'Starting at $150 for maintenance, call for repairs',
         supportsEmergency: true,
         supportsRecurring: true,
         estimatedDuration: 90,
@@ -788,9 +786,6 @@ async function seed() {
       data: {
         vendorId: vendor2.id,
         categoryId: plumbingCategory.id,
-        basePrice: 120,
-        hourlyRate: 95,
-        priceNote: 'Starting at $120 service call + $95/hr',
         supportsEmergency: true,
         supportsRecurring: true,
         estimatedDuration: 60,
@@ -834,8 +829,6 @@ async function seed() {
       data: {
         vendorId: vendor3.id,
         categoryId: landscapingCategory.id,
-        basePrice: 85,
-        priceNote: 'Monthly plans starting at $85',
         supportsEmergency: false,
         supportsRecurring: true,
         estimatedDuration: 120,

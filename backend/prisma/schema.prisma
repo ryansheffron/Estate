@@ -388,11 +388,6 @@ model VendorService {
   categoryId      String
   category        MaintenanceCategory @relation(fields: [categoryId], references: [id])
 
-  // Pricing (optional, for transparency)
-  basePrice       Float?
-  hourlyRate      Float?
-  priceNote       String?            // "Starting at $X" or "Call for quote"
-
   // Service specifics
   supportsEmergency Boolean          @default(false)
   supportsRecurring Boolean          @default(true)
