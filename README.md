@@ -84,12 +84,52 @@ Estate Standard follows a **Japandi** design philosophy (Japanese minimalism + S
   - Completion proof requirements (2+ of: photos, timestamps, invoice, notes)
   - Homeowner confirmation with auto-confirm after 48 hours
   - Payment eligibility tracking
+  - Immutable audit trail
 
 - **Recurring Visit Engine**
-  - Auto-generates future appointments
-  - Reserves vendor availability
-  - Sends reminders and confirmations
+  - Auto-generates future appointments (daily at 2 AM)
+  - Reserves vendor availability with optimistic locking
+  - Sends 24-hour advance reminders
   - Maintains service history
+
+### Production-Ready Backend Features
+
+- **Idempotency Protection**
+  - Prevents duplicate payment charges from network retries
+  - UUID-based request deduplication
+  - 24-hour response caching
+  - Required for all payment mutations
+
+- **Multi-Channel Notifications**
+  - SMS via Twilio (respects user preferences)
+  - Email via SendGrid/Resend
+  - Mobile push via Expo
+  - 14 notification types across job lifecycle
+  - Graceful fallback handling
+
+- **Background Workers** (4 automated processes)
+  - **Auto-Confirmation Worker** (hourly) - Confirms jobs after 48h, releases vendor payouts
+  - **Reminder Worker** (hourly) - Sends 24h advance appointment reminders
+  - **Recurring Appointment Worker** (daily 2 AM) - Generates recurring maintenance appointments
+  - **Cleanup Worker** (daily 3 AM) - Removes expired idempotency keys, tokens, audit logs
+
+- **Enhanced Payment Lifecycle**
+  - Stripe Connect destination charges
+  - Manual capture (hold funds until job confirmed)
+  - Platform fee calculation
+  - Vendor payout tracking and release
+  - Payment lifecycle timestamps (authorized → captured → refunded)
+
+- **Security & Compliance**
+  - Enhanced rate limiting (9 endpoint-specific limiters)
+  - Audit logging for all sensitive operations
+  - PII encryption at rest (AES-256)
+  - Input validation and sanitization
+  - Helmet.js security headers
+  - CORS protection
+  - Request timeout (30s)
+  - Account lockout after failed login attempts
+  - 2FA ready (TOTP)
 
 ## Tech Stack
 
@@ -97,7 +137,7 @@ Estate Standard follows a **Japandi** design philosophy (Japanese minimalism + S
 - **Node.js + Express** - RESTful API
 - **PostgreSQL + Prisma** - Robust relational database with type-safe ORM
 - **TypeScript** - End-to-end type safety
-- **JWT** - Secure authentication
+- **JWT** - Secure authentication with refresh token rotation
 
 ### Frontend (Mobile)
 - **React Native (Expo)** - Cross-platform iOS/Android
@@ -106,45 +146,69 @@ Estate Standard follows a **Japandi** design philosophy (Japanese minimalism + S
 - **Zustand** - Local state management
 - **Custom Japandi Design System** - Cohesive, premium UI
 
-### Future Integrations (V1+)
-- **Stripe Connect** - Payment processing and vendor payouts
+### Production Integrations (Implemented)
+- **Stripe Connect** - Payment processing and vendor payouts (destination charges)
 - **Twilio** - SMS notifications
-- **SendGrid** - Email notifications
-- **AWS S3** - Photo/document storage
-- **OpenAI GPT-4** - Advanced AI triage and sentiment analysis
+- **SendGrid/Resend** - Email notifications
+- **Expo Push Notifications** - Mobile push notifications
+- **Node-Cron** - Background job scheduling
+- **Winston** - Structured logging
+- **Sentry** - Error tracking (ready)
+
+### Future Integrations (V2+)
+- **AWS S3** - Photo/document storage (presigned URLs ready)
+- **OpenAI GPT-4 Vision** - Advanced AI triage
+- **DataDog** - APM and observability (scale phase)
 
 ## Project Structure
 
 ```
 Estate/
-├── backend/              # Node.js API server
-│   ├── prisma/           # Database schema & migrations
-│   │   ├── schema.prisma # 13 core entities + job ledger
-│   │   └── seed.ts       # Sample DFW data
+├── backend/                     # Node.js API server (production-ready)
+│   ├── prisma/                  # Database layer
+│   │   ├── schema.prisma        # 23 tables, 12 enums, 45+ indexes
+│   │   ├── migrations/          # SQL migrations
+│   │   └── seed.ts              # Sample DFW data
 │   ├── src/
-│   │   ├── controllers/  # Route handlers
-│   │   ├── routes/       # API endpoints
-│   │   ├── middleware/   # Auth, error handling, rate limiting
-│   │   ├── ai/           # Triage service (pluggable architecture)
-│   │   └── server.ts     # Express app
+│   │   ├── controllers/         # Route handlers
+│   │   ├── routes/              # API endpoints (9 route files)
+│   │   ├── middleware/          # Auth, error handling, rate limiting, idempotency
+│   │   │   ├── auth.ts
+│   │   │   ├── rateLimiter.enhanced.ts  # 9 endpoint-specific limiters
+│   │   │   ├── idempotency.ts           # Payment deduplication
+│   │   │   ├── auditLogger.ts
+│   │   │   └── piiEncryption.ts
+│   │   ├── services/            # Business logic
+│   │   │   ├── notification.service.ts  # Multi-channel notifications
+│   │   │   ├── stripe.service.ts        # Stripe Connect integration
+│   │   │   └── ai/                      # Triage service (pluggable)
+│   │   ├── workers/             # Background jobs
+│   │   │   ├── autoConfirmation.worker.ts  # Hourly job confirmation
+│   │   │   ├── reminder.worker.ts          # Hourly appointment reminders
+│   │   │   ├── recurringAppointment.worker.ts  # Daily recurring generator
+│   │   │   └── cleanup.worker.ts           # Daily data cleanup
+│   │   ├── utils/               # Helpers, logger, security
+│   │   └── server.ts            # Express app (enhanced security)
 │   └── package.json
 │
-├── mobile/               # React Native mobile app
+├── mobile/                      # React Native mobile app (Expo)
 │   ├── src/
-│   │   ├── screens/      # HomeScreen, GuideScreen, CustomerCareScreen, ProfileScreen
-│   │   ├── navigation/   # Bottom tab navigation
-│   │   ├── theme/        # Japandi design system
-│   │   ├── components/   # Reusable UI components
-│   │   └── services/     # API integration
-│   ├── App.tsx           # App entry point
+│   │   ├── screens/             # HomeScreen, GuideScreen, CustomerCareScreen, ProfileScreen
+│   │   ├── navigation/          # Bottom tab navigation
+│   │   ├── theme/               # Japandi design system
+│   │   ├── components/          # Reusable UI components
+│   │   └── services/            # API integration
+│   ├── App.tsx                  # App entry point
 │   └── package.json
 │
-├── docs/
-│   ├── SETUP.md          # Complete setup guide
-│   └── DEPLOYMENT.md     # Deployment instructions (future)
+├── docs/                        # Comprehensive technical documentation (~9,000 lines)
+│   ├── SETUP.md                 # Complete setup guide (15 min)
+│   ├── SYSTEM_ARCHITECTURE.md   # Systems architecture (3,113 lines)
+│   ├── DATABASE_DESIGN.md       # Database schema (2,737 lines)
+│   ├── INFRASTRUCTURE.md        # Infrastructure & integrations (3,005 lines)
+│   └── API_DOCUMENTATION.md     # Complete API reference (765 lines)
 │
-├── ARCHITECTURE.md       # System architecture & design decisions
-└── README.md             # This file
+└── README.md                    # This file
 ```
 
 ## Quick Start
@@ -301,8 +365,8 @@ Features:
 
 ## Roadmap
 
-### ✅ MVP (Weeks 1-8) - **YOU ARE HERE**
-- User registration & authentication
+### ✅ Phase 1 - Core MVP (Weeks 1-8) - **COMPLETED**
+- User registration & authentication (JWT + refresh tokens)
 - 38 maintenance categories
 - Service request creation with AI triage
 - Vendor recommendations & live booking
@@ -310,33 +374,46 @@ Features:
 - Completion confirmation flow
 - React Native app with Japandi design
 - Sample DFW data
+- PostgreSQL + Prisma ORM
 
-### 🚧 V1 - Payments & Vendor Portal (Weeks 9-16)
-- Stripe Connect integration
-- Vendor payout automation
+### ✅ Phase 2 - Production Backend (Weeks 9-12) - **COMPLETED**
+- Stripe Connect integration (destination charges + manual capture)
+- Vendor payout automation (auto-release after 48h confirmation)
+- Idempotency protection (payment deduplication)
+- Multi-channel notifications (SMS, Email, Push)
+- Background workers (4 automated processes)
+- Enhanced security (rate limiting, audit logging, PII encryption)
+- Complete documentation suite (~9,000 lines)
+- Database migrations (23 tables, 45+ indexes)
+
+### 🚧 Phase 3 - Mobile App & Vendor Portal (Weeks 13-16) - **YOU ARE HERE**
+- Polish React Native mobile app UI
 - Vendor web portal (availability, earnings, requests)
-- Recurring visit automation
-- Advanced AI triage (OpenAI GPT-4)
+- Advanced AI triage (OpenAI GPT-4 Vision)
+- Photo upload to S3 with presigned URLs
 - Warranty tracking (OCR receipts)
 - Dispute resolution workflow
 - Review & rating system
+- Admin dashboard
 
-### 🔮 V2 - AI Concierge & Integrations (Weeks 17-24)
-- Full AI concierge (multi-channel)
+### 🔮 Phase 4 - AI Concierge & Integrations (Weeks 17-24)
+- Full AI concierge (multi-modal)
 - SMS 2-way conversations (Twilio)
-- Email integration (SendGrid inbound)
+- Email integration (SendGrid inbound parsing)
 - Smart home integrations (Nest, Ring, leak sensors)
-- Predictive maintenance (ML)
+- Predictive maintenance (ML models)
 - API for property managers
 - Referral program
 
-### 🌟 V3 - Scale & Intelligence (6-12 months)
+### 🌟 Phase 5 - Scale & Intelligence (6-12 months)
+- AWS migration (ECS Fargate, RDS, SQS, Lambda)
 - Custom LLM fine-tuning
 - Dynamic pricing optimization
 - Vendor network expansion tools
 - White-label for property management companies
-- Enterprise features (multi-property)
-- Advanced analytics
+- Enterprise features (multi-property portfolios)
+- Advanced analytics & BI dashboards
+- DataDog APM integration
 
 ## Competitive Differentiation
 
@@ -362,26 +439,96 @@ Features:
 
 ## Security & Privacy
 
-- **Authentication**: JWT with refresh token rotation
-- **Password hashing**: bcrypt
-- **Authorization**: Role-based access control (RBAC)
-- **Data encryption**: At rest and in transit
-- **PII handling**: GDPR-compliant
-- **Payment security**: PCI-compliant via Stripe
-- **API security**: Rate limiting, input validation, CORS, HTTPS only
+### Authentication & Authorization
+- **JWT**: Access tokens (15 min) with refresh token rotation (7 days)
+- **Password hashing**: bcrypt (12 rounds)
+- **RBAC**: Role-based access control (HOMEOWNER, VENDOR, ADMIN)
+- **2FA**: TOTP ready with backup codes
+- **Account lockout**: After 5 failed login attempts (15 min lockout)
+- **Email verification**: Required before account activation
+- **Password history**: Prevents reuse of last 5 passwords
+
+### Data Protection
+- **PII encryption**: AES-256 at rest (Prisma middleware)
+- **TLS/SSL**: In-transit encryption (HTTPS only)
+- **GDPR-compliant**: Data export, deletion, consent tracking
+- **Audit logging**: All sensitive operations logged (90-day retention)
+- **Input sanitization**: XSS prevention, SQL injection protection
+
+### API Security
+- **Rate limiting**: 9 endpoint-specific limiters (100 req/15min global)
+  - Auth: 5 req/15min
+  - Password reset: 3 req/hour
+  - Email verify: 5 req/hour
+  - 2FA: 5 req/15min
+  - Payment: 10 req/15min
+  - Messaging: 20 req/15min
+  - Upload: 10 req/hour
+  - Expensive ops: 5 req/15min
+- **Helmet.js**: Security headers (CSP, HSTS, XSS protection, frame guard)
+- **CORS**: Whitelisted origins only
+- **Request timeout**: 30 seconds max
+- **Idempotency**: Prevents duplicate payment charges
+
+### Payment Security
+- **PCI-compliant**: Via Stripe (no card data stored)
+- **Idempotency keys**: UUID-based deduplication (24h cache)
+- **Manual capture**: Funds held until job confirmed
+- **Webhook verification**: Stripe signature validation
+- **Payout protection**: Released only after job confirmation + 48h window
 
 ## API Endpoints
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for complete API documentation.
+See **[docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)** for complete API documentation with examples.
 
 **Core endpoints**:
-- `POST /api/auth/login` - Authentication
-- `POST /api/service-requests` - Create service request
+
+### Authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - Login with JWT
+- `POST /api/auth/refresh` - Refresh access token
+- `POST /api/auth/verify-email` - Verify email address
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Reset password with token
+
+### Service Requests
+- `POST /api/service-requests` - Create service request (AI triage)
+- `GET /api/service-requests/:id` - Get request details
 - `GET /api/service-requests/:id/vendors` - Get 3 recommended vendors
-- `POST /api/appointments` - Book appointment
+- `PATCH /api/service-requests/:id` - Update request
+
+### Appointments
+- `POST /api/appointments` - Book appointment with vendor
+- `GET /api/appointments/:id` - Get appointment details
+- `PATCH /api/appointments/:id/accept` - Vendor accepts
+- `PATCH /api/appointments/:id/check-in` - Vendor checks in
 - `PATCH /api/appointments/:id/complete` - Vendor marks complete
 - `PATCH /api/appointments/:id/confirm-completion` - Homeowner confirms
+- `DELETE /api/appointments/:id` - Cancel appointment
+
+### Recurring Services
+- `POST /api/recurring` - Create recurring rule
+- `GET /api/recurring/home/:homeId` - Get all recurring rules
+- `PATCH /api/recurring/:id` - Update rule
+- `DELETE /api/recurring/:id` - Delete rule
+
+### Payments (Idempotency Required)
+- `POST /api/payments/create-intent` - Create payment intent (requires `Idempotency-Key` header)
+- `POST /api/payments/:id/capture` - Capture authorized payment
+- `POST /api/payments/:id/refund` - Issue refund
+- `GET /api/payments/:id` - Get payment status
+
+### Maintenance
 - `GET /api/maintenance/homes/:homeId` - Get maintenance overview
+- `GET /api/maintenance/categories` - Get all 38 categories
+
+### Messages
+- `POST /api/messages` - Send message
+- `GET /api/messages/thread/:threadId` - Get message thread
+
+**Security Headers Required**:
+- `Authorization: Bearer <access_token>` - All authenticated endpoints
+- `Idempotency-Key: <uuid>` - Payment mutations only
 
 ## Contributing
 
@@ -394,10 +541,24 @@ This is a white-glove MVP. Contributions should maintain:
 
 ## Documentation
 
+### Comprehensive Technical Documentation (~9,000+ lines)
+
 - **[SETUP.md](docs/SETUP.md)** - Complete setup guide (15 min)
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design & decisions
-- **Database Schema**: `backend/prisma/schema.prisma`
+- **[SYSTEM_ARCHITECTURE.md](docs/SYSTEM_ARCHITECTURE.md)** - Systems architecture, state machines, event flows, failure scenarios (3,113 lines)
+- **[DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md)** - Complete database schema, 23 tables, 45+ indexes, fraud prevention (2,737 lines)
+- **[INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md)** - Infrastructure architecture, deployment, integrations, cost analysis (3,005 lines)
+- **[API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)** - Complete API reference with examples (765 lines)
+- **Database Schema**: `backend/prisma/schema.prisma` (23 tables, 12 enums)
 - **Design System**: `mobile/src/theme/index.ts`
+
+### Key Documentation Highlights
+
+- **Complete Job Lifecycle** - 8 phases from request → payout with SQL examples
+- **6 Real-World Failure Scenarios** - Double-booking, payment failures, webhook issues
+- **10 Non-Negotiable Architecture Rules** - Atomic operations, idempotency, immutable ledgers
+- **DFW Homeowner → HVAC Repair Example** - Complete flow with database state snapshots
+- **Infrastructure Migration Path** - Railway (MVP) → AWS (scale) with cost breakdowns
+- **10 Fraud Prevention Mechanisms** - Multi-proof verification, webhook verification, idempotency
 
 ## Success Metrics
 
